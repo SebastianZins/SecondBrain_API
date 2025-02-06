@@ -29,5 +29,78 @@ namespace SecondBrain.API.Controllers
                 return BadRequest(e.Message);
             }
         }
+
+        [HttpGet]
+        [Route("id")]
+        public async Task<ActionResult> GetByIdAsync([FromQuery] Guid id)
+        {
+            try
+            {
+                FileNodeResponseDTO result = await _fileNodeService.GetByIdAsync(id);
+                return Ok(result);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpGet]
+        [Route("name")]
+        public async Task<ActionResult> GetByNameAsync([FromQuery] string name)
+        {
+            try
+            {
+                List<FileNodeResponseDTO> result = await _fileNodeService.GetByNameAsync(name);
+                return Ok(result);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpGet]
+        [Route("path")]
+        public async Task<ActionResult> GetByPathAsync([FromQuery] string path)
+        {
+            try
+            {
+                List<FileNodeResponseDTO> result = await _fileNodeService.GetByPathAsync(path);
+                return Ok(result);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpPatch]
+        public async Task<ActionResult> UpsertAsync([FromBody] FileNodeResponseDTO file)
+        {
+            try
+            {
+                await _fileNodeService.UpsertAsync(file);
+                return Ok(true);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpDelete]
+        public async Task<ActionResult> DeleteAsync([FromQuery] Guid id)
+        {
+            try
+            {
+                await _fileNodeService.DeleteAsync(id);
+                return Ok(true);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
     }
 }
