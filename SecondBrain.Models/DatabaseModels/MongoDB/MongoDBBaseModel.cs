@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace SecondBrain.Models.MongoDB
+namespace SecondBrain.Models.DatabaseModels.MongoDB
 {
     public class MongoDBBaseModel
     {

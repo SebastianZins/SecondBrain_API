@@ -1,6 +1,16 @@
+using Neo4jClient;
+using SecondBrain.Database.Neo4j;
+using SecondBrain.Repositories.Neo4j;
+using SecondBrain.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
+var configurations = builder.Configuration;
 
+builder.Services.Configure<Neo4jSettingsModel>(configurations.GetSection("Neo4j"));
+builder.Services.AddSingleton<Neo4jGraph>();
+builder.Services.AddScoped<FileNodeService>();
+builder.Services.AddScoped<FileNodeRepository>();
 
 // Add services to the container.
 builder.Services.AddControllers();

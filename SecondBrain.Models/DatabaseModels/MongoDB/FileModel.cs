@@ -1,4 +1,4 @@
-﻿namespace SecondBrain.Models.MongoDB
+﻿namespace SecondBrain.Models.DatabaseModels.MongoDB
 {
     public class FileModel : MongoDBBaseModel
     {

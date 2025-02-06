@@ -2,7 +2,7 @@
 using MongoDB.Driver;
 using SecondBrain.Core.Interfaces;
 using SecondBrain.Database.MongoDB;
-using SecondBrain.Models.MongoDB;
+using SecondBrain.Models.DatabaseModels.MongoDB;
 
 namespace SecondBrain.Repositories.MongoDB
 {

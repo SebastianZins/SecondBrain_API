@@ -1,6 +1,5 @@
 ﻿using MongoDB.Driver;
-using SecondBrain.Models.MongoDB;
-
+using SecondBrain.Models.DatabaseModels.MongoDB;
 
 namespace SecondBrain.Database.MongoDB
 {
