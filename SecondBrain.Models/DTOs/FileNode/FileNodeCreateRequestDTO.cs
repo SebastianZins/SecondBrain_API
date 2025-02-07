@@ -2,11 +2,8 @@
 
 namespace SecondBrain.Models.DTOs.FileNode
 {
-    public class FileNodeResponseDTO
+    public class FileNodeCreateRequestDTO
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; }
-
         [JsonProperty("name")]
         public string Name { get; set; } = string.Empty;
 
@@ -16,14 +13,15 @@ namespace SecondBrain.Models.DTOs.FileNode
         [JsonProperty("category")]
         public int Category { get; set; } = 0;
 
-        public FileNodeResponseDTO() {}
-
-        public FileNodeResponseDTO(Models.DatabaseModels.Neo4j.FileNode node)
+        public Models.DatabaseModels.Neo4j.FileNode ToModel()
         {
-            Id = node.id;
-            Name = node.name;
-            Tags = node.tags;
-            Category = node.category;
+            return new Models.DatabaseModels.Neo4j.FileNode()
+            {
+                id = Guid.NewGuid(),
+                name = Name,
+                tags = Tags,
+                category = Category
+            };
         }
     }
 }
