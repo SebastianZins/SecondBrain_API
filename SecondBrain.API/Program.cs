@@ -1,22 +1,72 @@
-using Neo4jClient;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using SecondBrain.Database.Neo4j;
+using SecondBrain.Models.InternalModels;
 using SecondBrain.Repositories.Neo4j;
 using SecondBrain.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var configurations = builder.Configuration;
 
+var settings = new JwtSettings();
+
 builder.Services.Configure<Neo4jSettingsModel>(configurations.GetSection("Neo4j"));
 builder.Services.AddSingleton<Neo4jGraph>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileNodeService>();
+builder.Services.AddScoped<UserService>();
+
 builder.Services.AddScoped<FileNodeRepository>();
+builder.Services.AddScoped<UserRepository>();
+
+builder.Services.AddOptions();
+builder.Services.Configure<JwtSettings>(configurations.GetSection("JwtSettings"));
+builder.Services.AddMvc();
 
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "Name";
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidIssuer = settings.Issuer,
+        ValidAudience = settings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.Key)),
+        ValidateIssuerSigningKey = true,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero // the default for this setting is 5 minutes
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+            {
+                context.Response.Headers.Add("Token-Expired", true.ToString().ToLower());
+            }
+            return Task.CompletedTask;
+        }
+    };
+
+});
 
 var app = builder.Build();
 

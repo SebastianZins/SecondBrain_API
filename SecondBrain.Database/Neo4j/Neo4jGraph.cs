@@ -1,8 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using MongoDB.Driver;
+﻿using Microsoft.Extensions.Options;
 using Neo4jClient;
-using System;
 
 namespace SecondBrain.Database.Neo4j
 {
