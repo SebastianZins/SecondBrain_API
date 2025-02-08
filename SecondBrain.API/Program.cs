@@ -32,6 +32,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS policy#
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SecondBrain",
+    builder =>
+    {
+        builder.WithOrigins("http://localhost:4200")
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials();
+    });
+});
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -39,12 +52,27 @@ builder.Services.AddAuthentication(options =>
 })
     .AddCookie(options =>
     {
-        options.Cookie.Name = "Name";
+        options.Cookie.Name = "SecondBrain-Login";
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.HttpOnly = true;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                context.Response.StatusCode = 401;
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                context.Response.StatusCode = 403;
+                return Task.CompletedTask;
+            }
+        };
     })
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.RequireHttpsMetadata = false;
-    options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidIssuer = settings.Issuer,
@@ -70,6 +98,9 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+// Use CORS policy
+app.UseCors("SecondBrain");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -79,7 +110,19 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = 204;
+        return;
+    }
+
+    await next();
+});
 
 app.MapControllers();
 
