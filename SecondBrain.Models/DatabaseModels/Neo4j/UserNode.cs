@@ -8,6 +8,6 @@
         public string password { get; set; } = string.Empty;
         public string passwordSalt { get; set; } = string.Empty;
         public long created { get; set; } = 0;
-        public string? refreshToken {  get; set; }
+        public string? refreshToken {  get; set; } = null;
     }
 }
