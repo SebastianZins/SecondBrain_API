@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SecondBrain.Core\SecondBrain.Core.csproj" />
     <ProjectReference Include="..\SecondBrain.Interfaces\SecondBrain.Interfaces.csproj" />
   </ItemGroup>
 

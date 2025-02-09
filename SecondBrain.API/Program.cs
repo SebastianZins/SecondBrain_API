@@ -17,9 +17,11 @@ builder.Services.Configure<Neo4jSettingsModel>(configurations.GetSection("Neo4j"
 builder.Services.AddSingleton<Neo4jGraph>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileNodeService>();
+builder.Services.AddScoped<FileStructureService>();
 builder.Services.AddScoped<UserService>();
 
 builder.Services.AddScoped<FileNodeRepository>();
+builder.Services.AddScoped<FileStructureRepository>();
 builder.Services.AddScoped<UserRepository>();
 
 builder.Services.AddOptions();
