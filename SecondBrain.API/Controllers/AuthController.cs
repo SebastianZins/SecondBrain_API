@@ -54,7 +54,7 @@ namespace SecondBrain.API.Controllers
             var props = new AuthenticationProperties
             {
                 IsPersistent = true,
-                ExpiresUtc = DateTime.UtcNow.AddMinutes(5),
+                ExpiresUtc = DateTime.UtcNow.AddMinutes(60),
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
