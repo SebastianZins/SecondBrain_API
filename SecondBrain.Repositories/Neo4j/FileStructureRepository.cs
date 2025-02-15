@@ -1,5 +1,6 @@
 ﻿using Neo4j.Driver;
 using Neo4jClient;
+using SecondBrain.Core.Enums;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 
@@ -15,190 +16,256 @@ namespace SecondBrain.Repositories.Neo4j
         }
 
         /// <summary>
-        /// Get root folder
+        /// Get file structure item or root if no id provided
         /// </summary>
         /// <param name="userId"></param>
+        /// <param name="id"></param>
         /// <returns></returns>
         /// <exception cref="Neo4jException"></exception>
-        public async Task<FileStructureNode?> GetRootFolderAsync(Guid userId)
+        public async Task<FileStructureNode?> GetFileStructureItemAsync(Guid userId, Guid? id = null)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(root:RootFolder)-[:CreatedBy|UpdatedBy]->(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .ReturnDistinct(root => root.As<FileStructureNode>());
-
-                var result = await query.ResultsAsync;
-                return result.Count() >= 1 ? result.Single() : null;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Root folder not found.");
-            }
-        }
-
-        /// <summary>
-        /// Get Folder
-        /// </summary>
-        /// <param name="folderId"></param>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        /// <exception cref="Neo4jException"></exception>
-        public async Task<FileStructureNode> GetFolderAsync(Guid folderId, Guid userId)
-        {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode folder) => folder.id == folderId)
-                    .ReturnDistinct(folder => folder.As<FileStructureNode>());
-
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Folder not found.");
-            }
-        }
-
-        /// <summary>
-        /// Create root folder
-        /// </summary>
-        /// <param name="root"></param>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        /// <exception cref="Neo4jException"></exception>
-        public async Task<FileStructureNode> CreateRootFolderAsync(FileStructureNode root, Guid userId)
-        {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .Merge("(root:RootFolder:FileStructure{id:$id})")
-                    .OnCreate()
-                    .Set("root = $root")
-                    .With("user, root")
-                    .Merge("(root)-[:CreatedBy {created:$now}]->(user)")
-                    .Merge("(root)-[:UpdatedBy {updated:$now}]->(user)")
-                    .WithParams(new { root.id, root, now })
-                    .Return(root => root.As<FileStructureNode>());
-
-               return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Create root folder.");
-            }
-        }
-
-        /// <summary>
-        /// Get complete file structure
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        /// <exception cref="Neo4jException"></exception>
-        public async Task<List<Tuple<FileStructureNode, FileStructureNode>>> GetFileStructureAsync(Guid userId)
-        {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)-[:ParentFolderOf]->(child:FileStructure)")
-                    .Where((UserNode user) => user.id == userId)
-                    .Return((folder, child) => new Tuple<FileStructureNode, FileStructureNode>(
-                            folder.As<FileStructureNode>(),
-                            child.As<FileStructureNode>()
-                        ));
-
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Loading file structure failed.");
-            }
-        }
-
-        /// <summary>
-        /// Create folder
-        /// </summary>
-        /// <param name="newFolder"></param>
-        /// <param name="parentFolderId"></param>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        /// <exception cref="Neo4jException"></exception>
-        public async Task CreateFolderAsync(FileStructureNode newFolder, Guid? parentFolderId, Guid userId)
-        {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             try
             {
                 var query = _graph.Cypher
                     .Match("(user:User)")
                     .Where((UserNode user) => user.id == userId);
 
-                // add to root folder
-                if (parentFolderId == null)
+                if (id == null)
+                {
+                    query = query.Match("(item:RootFolder)-[:CreatedBy|UpdatedBy]->(user)");
+                }
+                else
                 {
                     query = query
-                        .Match("(folder:RootFolder)-[:CreatedBy|UpdatedBy]->(user:User)");
-                } else
-                {
-                    query = query
-                        .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
-                        .Where((FileStructureNode folder) => folder.id == parentFolderId);
+                        .Match("(item:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
+                        .Where((FileStructureNode item) => item.id == id);
                 }
 
-                query = query
-                    .Merge("(newFolder:FileStructure{id:$id})")
-                    .OnCreate()
-                    .Set("newFolder = $newFolder")
-                    .With("user, newFolder, folder")
-                    .Merge("(newFolder)-[:CreatedBy {created:$now}]->(user)")
-                    .Merge("(newFolder)-[:UpdatedBy {updated:$now}]->(user)")
-                    .Merge("(folder)-[:ParentFolderOf]->(newFolder)")
-                    .WithParams(new { newFolder.id, newFolder, now });
+                var resultQuery = query
+                    .ReturnDistinct(item => item.As<FileStructureNode>());
 
-                await query.ExecuteWithoutResultsAsync();
+                var result = await resultQuery.ResultsAsync;
+                return result.Count() >= 1 ? result.Single() : null;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Creating new folder failed.");
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "File structure item not found.");
             }
         }
 
         /// <summary>
-        /// Update folder data
+        /// Create a root folder
         /// </summary>
-        /// <param name="newFolder"></param>
+        /// <param name="label"></param>
+        /// <param name="type"></param>
+        /// <param name="treeId"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
         /// <exception cref="Neo4jException"></exception>
-        public async Task UpdateFolderAsync(FileStructureNode newFolder, Guid userId)
+        public async Task<FileStructureNode> CreateFileStructureRootAsync(string label, EFileType type, int treeId, Guid userId)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             try
             {
                 var query = _graph.Cypher
-                    .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
+                    .Match("(user:User)")
                     .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode folder) => folder.id == newFolder.id)
-                    .Set("folder = $newFolder")
-                    .Merge("(folder)-[:UpdatedBy {updated:$now}]->(user)")
-                    .WithParams(new { newFolder, now });
+                    .Merge($"(item:RootFolder:FileStructure{{id:'{Guid.NewGuid()}'}})")
+                    .OnCreate()
+                    .Set($"item.type = {((int)type)}")
+                    .Set($"item.label = '{label}'")
+                    .Set($"item.treeId = '{treeId}'")
+                    .Merge("(item)-[:CreatedBy {created:$now}]->(user)")
+                    .Merge("(item)-[:UpdatedBy {updated:$now}]->(user)")
+                    .WithParam("now", now)
+                    .ReturnDistinct(item => item.As<FileStructureNode>());
+
+                return (await query.ResultsAsync).Single();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Creating file structure item failed.");
+            }
+        }
+
+        /// <summary>
+        /// Create a new file structure item
+        /// </summary>
+        /// <param name="label"></param>
+        /// <param name="type"></param>
+        /// <param name="treeId"></param>
+        /// <param name="userId"></param>
+        /// <param name="parentId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task<FileStructureNode> CreateFileStructureItemAsync(string label, EFileType type, int treeId, Guid parentId, Guid userId)
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .Match("(parent:FileStructure)-[]->(user)")
+                    .Where((FileStructureNode parent) => parent.id == parentId)
+                    .Merge($"(item:FileStructure{{id:'{Guid.NewGuid()}'}})")
+                    .OnCreate()
+                    .Set($"item.type = {(int)type}")
+                    .Set($"item.label = '{label}'")
+                    .Set($"item.treeId = '{treeId}'")
+                    .Merge("(item)-[:CreatedBy {created:$now}]->(user)")
+                    .Merge("(item)-[:UpdatedBy {updated:$now}]->(user)")
+                    .Merge("(parent)-[:ParentFolderOf]->(item)")
+                    .WithParam("now", now)
+                    .ReturnDistinct(item => item.As<FileStructureNode>());
+
+                return (await query.ResultsAsync).Single();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Creating file structure item failed.");
+            }
+        }
+
+        /// <summary>
+        /// Get all first level children of a folder
+        /// </summary>
+        /// <param name="parentFolderId"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task<List<FileStructureNode>> GetChildFileStructureItemsAsync(Guid parentFolderId, Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(parent:FileStructure)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileStructureNode parent) => parent.id == parentFolderId)
+                    .Match("(parent)-[:ParentFolderOf]->(child:FileStructure)")
+                    .ReturnDistinct(child => child.As<FileStructureNode>());
+
+                return (await query.ResultsAsync).ToList();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Loading file structure items failed.");
+            }
+        }
+
+        /// <summary>
+        /// Update the tree id of an item
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="treeId"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task UpdateItemTreeIdAsync(Guid id, int treeId, Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileStructureNode item) => item.id == id)
+                    .Set($"item.treeId = {treeId}");
 
                 await query.ExecuteWithoutResultsAsync();
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Updating folder failed.");
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Updating tree id of file structure item failed.");
+            }
+        }
+
+
+        /// <summary>
+        /// Get all file structure items for user
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task<List<FileStructureNode>> GetFileStructuresAsync(Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
+                    .Where((UserNode user) => user.id == userId)
+                    .ReturnDistinct(item => item.As<FileStructureNode>());
+
+                return (await query.ResultsAsync).ToList();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Loading file structure items failed.");
+            }
+        }
+
+        /// <summary>
+        /// Get connections between file structure items of user
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task<List<Tuple<Guid, Guid>>> GetFileStructureConnectionsAsync(Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .Match("(user)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)-[:ParentFolderOf]->(child:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
+                    .ReturnDistinct((folder, child) => new Tuple<Guid, Guid>(
+                            folder.As<FileStructureNode>().id,
+                            child.As<FileStructureNode>().id
+                        ));
+
+                return (await query.ResultsAsync).ToList();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Loading file structure connections failed.");
+            }
+        }
+
+        /// <summary>
+        /// Update file structure data
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="label"></param>
+        /// <param name="type"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task UpdateFileStructureItemDataAsync(Guid id, string label, EFileType type, Guid userId)
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(item:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileStructureNode item) => item.id == id)
+                    .Set($"item.label = {label}")
+                    .Set($"item.type = {type}")
+                    .Merge("(item)-[:UpdatedBy {updated:$now}]->(user)")
+                    .WithParams(new { now });
+
+                await query.ExecuteWithoutResultsAsync();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Updating filte structure item data failed.");
             }
         }
         
@@ -209,7 +276,7 @@ namespace SecondBrain.Repositories.Neo4j
         /// <param name="userId"></param>
         /// <returns></returns>
         /// <exception cref="Neo4jException"></exception>
-        public async Task DeleteFolderAsync(Guid folderId, Guid userId)
+        public async Task DeleteFileStructureItemAsync(Guid folderId, Guid userId)
         {
             try
             {
@@ -217,7 +284,9 @@ namespace SecondBrain.Repositories.Neo4j
                     .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileStructureNode folder) => folder.id == folderId)
-                    .Match("(folder)-[:ParentFolderOf*]->(childFolder:FileStructure)-[]->(file:File|Image|DataFile)")
+                    .OptionalMatch("(folder:FileStructure)-[]->(file:File|Image|DataFile)")
+                    .OptionalMatch("(folder)-[:ParentFolderOf*]->(childFolder:FileStructure)")
+                    .OptionalMatch("(childFolder:FileStructure)-[]->(file:File|Image|DataFile)")
                     .DetachDelete("file")
                     .DetachDelete("childFolder")
                     .DetachDelete("folder");
@@ -226,39 +295,58 @@ namespace SecondBrain.Repositories.Neo4j
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error:", e);
+                Console.WriteLine("Error:", e.Message);
                 throw new Neo4jException("Error:", "Deleting folder failed.");
             }
         }
 
         /// <summary>
-        /// Move folder under a different parent folder
+        /// Get parent folder
         /// </summary>
-        /// <param name="folderId"></param>
-        /// <param name="newParentFolderId"></param>
+        /// <param name="itemId"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
         /// <exception cref="Neo4jException"></exception>
-        public async Task MoveFolderAsync(Guid folderId, Guid newParentFolderId, Guid userId)
+        public async Task<FileStructureNode> GetParentFolderAsync(Guid itemId, Guid userId)
         {
             try
             {
                 var query = _graph.Cypher
-                    .Match("(parentFolder:FileStructure)-[rel:ParentFolderOf]->(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
+                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)<-[:ParentFolderOf]-(parent:FileStructure)")
                     .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode folder) => folder.id == folderId)
-                    .Match("(newParentFolder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
-                    .Where((FileStructureNode newParentFolder) => newParentFolder.id == newParentFolderId)
-                    .Delete("rel")
-                    .With("folder, newParentFolder")
-                    .Merge("(newParentFolder)-[:ParentFolderOf]->(folder)");
+                    .AndWhere((FileStructureNode folder) => folder.id == itemId)
+                    .ReturnDistinct(parent => parent.As<FileStructureNode>());
+
+                return (await query.ResultsAsync).Single();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Loading parent folder.");
+            }
+        }
+
+        public async Task MoveFielStructureItemAsync(Guid id, Guid parentId, Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileStructureNode item) => item.id == id)
+                    .Match("(parent:FileStructure)-[rel:ParentFolderOf]->(item)")
+                    .DetachDelete("rel")
+                    .With("item")
+                    .Match("(newParent:FileStructure)")
+                    .Where((FileStructureNode newParent) => newParent.id == parentId)
+                    .Merge("(newParent)-[:ParentFolderOf]->(item)");
 
                 await query.ExecuteWithoutResultsAsync();
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error:", e);
-                throw new Neo4jException("Error:", "Moving folder failed.");
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Moving file structure item failed.");
             }
         }
     }

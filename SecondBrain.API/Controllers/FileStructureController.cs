@@ -19,11 +19,11 @@ namespace SecondBrain.API.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult> GetFileStructureAsync()
+        public async Task<ActionResult> GetFileStructureItemsAsync()
         {
             try
             {
-                List<FileStructureGetResponseDTO> result = await _fileStructureService.GetFileStructureAsync(User);
+                List<FileStructureGetResponseDTO> result = await _fileStructureService.GetFileStructureItemsAsync(User);
                 return Ok(result);
             }
             catch (Exception e)
@@ -34,11 +34,11 @@ namespace SecondBrain.API.Controllers
 
         [HttpPut]
         [Authorize]
-        public async Task<ActionResult> CreateFolderAsync([FromBody] FileStructureCreateRequestDTO requestData)
+        public async Task<ActionResult> CreateFileStructureItemAsync([FromBody] FileStructureCreateRequestDTO requestData)
         {
             try
             {
-                List<FileStructureGetResponseDTO> result = await _fileStructureService.CreateFolderAsync(requestData, User);
+                List<FileStructureGetResponseDTO> result = await _fileStructureService.CreateFileStructureItemAsync(requestData, User);
                 return Ok(result);
             }
             catch (Exception e)
@@ -49,11 +49,11 @@ namespace SecondBrain.API.Controllers
 
         [HttpPatch]
         [Authorize]
-        public async Task<ActionResult> UpdateFolderAsync([FromBody] FileStructureUpdateRequestDTO requestData)
+        public async Task<ActionResult> UpdateFileStructureItemAsync([FromBody] FileStructureUpdateRequestDTO requestData)
         {
             try
             {
-                List<FileStructureGetResponseDTO> result = await _fileStructureService.UpdateFolderAsync(requestData, User);
+                List<FileStructureGetResponseDTO> result = await _fileStructureService.UpdateFileStructureItemDataAsync(requestData, User);
                 return Ok(result);
             }
             catch (Exception e)
@@ -62,14 +62,29 @@ namespace SecondBrain.API.Controllers
             }
         }
 
-        [HttpPatch]
+        [HttpPost]
+        [Authorize]
         [Route("move")]
-        [Authorize]
-        public async Task<ActionResult> MoveFolderAsync([FromQuery] Guid folderId, Guid? newParentFolderId)
+        public async Task<ActionResult> UpdateFileStructureItemTreeIdAsync([FromBody] FileStructureMoveRequestDTO requestData)
         {
             try
             {
-                List<FileStructureGetResponseDTO> result = await _fileStructureService.MoveFolderAsync(folderId, newParentFolderId, User);
+                List<FileStructureGetResponseDTO> result = await _fileStructureService.MoveFileStructureItemAsync(requestData, User);
+                return Ok(result);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        [HttpDelete]
+        [Authorize]
+        public async Task<ActionResult> DeleteFileStructureItemAsync([FromQuery] Guid id)
+        {
+            try
+            {
+                List<FileStructureGetResponseDTO> result = await _fileStructureService.DeleteFileStructureItemAsync(id, User);
                 return Ok(result);
             }
             catch (Exception e)

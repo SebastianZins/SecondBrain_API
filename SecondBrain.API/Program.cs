@@ -18,7 +18,7 @@ builder.Services.AddSingleton<Neo4jGraph>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileNodeService>();
 builder.Services.AddScoped<FileStructureService>();
-builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserService>(); 
 
 builder.Services.AddScoped<FileNodeRepository>();
 builder.Services.AddScoped<FileStructureRepository>();
@@ -90,7 +90,7 @@ builder.Services.AddAuthentication(options =>
         {
             if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
             {
-                context.Response.Headers.Add("Token-Expired", true.ToString().ToLower());
+                context.Response.Headers.Add("X-Token-Expired", true.ToString().ToLower());
             }
             return Task.CompletedTask;
         }

@@ -6,32 +6,28 @@ namespace SecondBrain.Models.DTOs.FileStructure
 {
     public class FileStructureGetResponseDTO
     {
+        [JsonProperty("id")]
+        public Guid Id { get; set; } = Guid.Empty;
+
+        [JsonProperty("treeId")]
+        public int TreeId { get; set; } = 0;
+
         [JsonProperty("label")]
         public string Label { get; set; } = string.Empty;
 
         [JsonProperty("type")]
         public EFileType Type { get; set; } = 0;
 
-        [JsonProperty("icon")]
-        public string? Icon { get; set; }
-
-        [JsonProperty("fileClass")]
-        public Guid? FileClass { get; set; } = null;
-
-        [JsonProperty("showBtn")]
-        public bool ShowBtn { get; set; } = false;
-
         [JsonProperty("children")]
         public List<FileStructureGetResponseDTO>? Children { get; set; } = null;
 
-        public FileStructureGetResponseDTO(FileStructureNode folder, EFileType type)
+        public FileStructureGetResponseDTO(FileStructureNode folder)
         {
-            Label = folder.name;
-            Type = type;
-            Icon = folder.icon;
-            FileClass = folder.fileClass;
-            ShowBtn = folder.showCreateTemplateBtn;
-            if (type == EFileType.FOLDER)
+            Id = folder.id;
+            Label = folder.label;
+            Type = folder.type;
+            TreeId = folder.treeId;
+            if (folder.type == EFileType.FOLDER)
             {
                 Children = new List<FileStructureGetResponseDTO>();
             }
