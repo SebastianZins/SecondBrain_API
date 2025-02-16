@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SecondBrain.Models.DTOs.User;
-using SecondBrain.Services;
-using System.Security.Claims;
+using SecondBrain.Services.Auth;
 
-namespace SecondBrain.API.Controllers
+namespace SecondBrain.API.Controllers.Auth
 {
     [ApiController]
     [Route("[controller]")]
@@ -28,9 +27,11 @@ namespace SecondBrain.API.Controllers
             try
             {
                 bool success = await _userService.CreateAsync(request);
-                if (success) {
+                if (success)
+                {
                     return Ok(true);
-                } else
+                }
+                else
                 {
                     return Ok(false);
                 }

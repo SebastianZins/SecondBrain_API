@@ -4,7 +4,7 @@ using SecondBrain.Repositories.Neo4j;
 using SecondBrain.Utils;
 using System.Security.Claims;
 
-namespace SecondBrain.Services
+namespace SecondBrain.Services.Auth
 {
     public class UserService
     {

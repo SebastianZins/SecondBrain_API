@@ -14,7 +14,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace SecondBrain.Services
+namespace SecondBrain.Services.Auth
 {
     public class AuthService
     {

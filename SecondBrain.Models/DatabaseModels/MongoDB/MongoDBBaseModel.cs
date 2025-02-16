@@ -6,8 +6,9 @@ namespace SecondBrain.Models.DatabaseModels.MongoDB
     public class MongoDBBaseModel
     {
         [BsonId]
-        public ObjectId InternalId { get; set; }
+        public ObjectId _id { get; set; }
 
-        public Guid Id { get; set; }
+        [BsonGuidRepresentation(GuidRepresentation.Standard)]
+        public Guid structureId { get; set; } = Guid.Empty;
     }
 }

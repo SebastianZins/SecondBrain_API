@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SecondBrain.Models.DTOs.FileStructure;
-using SecondBrain.Services;
+using SecondBrain.Services.FileStructure;
 
-namespace SecondBrain.API.Controllers
+namespace SecondBrain.API.Controllers.File
 {
     [ApiController]
     [Route("[controller]")]

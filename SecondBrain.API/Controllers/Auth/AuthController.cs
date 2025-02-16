@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.Auth;
 using SecondBrain.Models.DTOs.User;
-using SecondBrain.Services;
+using SecondBrain.Services.Auth;
 using SecondBrain.Utils;
 using System.Security.Claims;
 
-namespace SecondBrain.API.Controllers
+namespace SecondBrain.API.Controllers.Auth
 {
     [ApiController]
     [Route("[controller]")]
@@ -27,7 +27,7 @@ namespace SecondBrain.API.Controllers
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> LoginAsync([FromBody] LoginRequestDTO request)
-        {        
+        {
             UserNode user;
             try
             {
@@ -81,7 +81,7 @@ namespace SecondBrain.API.Controllers
             try
             {
                 bool success = await _authService.SignupAsync(request);
-                if (success) { return Ok(); } else {  return BadRequest(); }
+                if (success) { return Ok(); } else { return BadRequest(); }
             }
             catch (Exception e)
             {
