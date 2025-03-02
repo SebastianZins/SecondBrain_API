@@ -3,6 +3,7 @@ using Neo4jClient;
 using SecondBrain.Core.Enums;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
+using System.Reflection.Emit;
 
 namespace SecondBrain.Repositories.Neo4j
 {
@@ -51,6 +52,27 @@ namespace SecondBrain.Repositories.Neo4j
             {
                 Console.WriteLine("Error:", e.Message);
                 throw new Neo4jException("Error:", "File structure item not found.");
+            }
+        }
+
+        public async Task<int> GetChildCountAsync(Guid itemId, Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(item:FileStructure)-[]->(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileStructureNode item) => item.id == itemId)
+                    .Match("(item)-[:ParentFolderOf]->(sibling:FileStructure)")
+                    .Where((FileStructureNode sibling) => sibling.id != itemId)
+                    .ReturnDistinct(sibling => sibling.As<FileStructureNode>().id);
+
+                return (await query.ResultsAsync).Count();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new Neo4jException("Error:", "Number of child items could not be determined.");
             }
         }
 
@@ -286,7 +308,9 @@ namespace SecondBrain.Repositories.Neo4j
                     .AndWhere((FileStructureNode folder) => folder.id == folderId)
                     .OptionalMatch("(folder:FileStructure)-[]->(file:File|Image|DataFile)")
                     .OptionalMatch("(folder)-[:ParentFolderOf*]->(childFolder:FileStructure)")
-                    .OptionalMatch("(childFolder:FileStructure)-[]->(file:File|Image|DataFile)")
+                    .OptionalMatch("(childFolder:FileStructure)-[]->(file:File)-[:Contains]->(section:FileSection)-[]-(attachement:Attachement)")
+                    .DetachDelete("attachement")
+                    .DetachDelete("section")
                     .DetachDelete("file")
                     .DetachDelete("childFolder")
                     .DetachDelete("folder");
