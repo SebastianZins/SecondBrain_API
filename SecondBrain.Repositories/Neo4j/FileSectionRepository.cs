@@ -2,6 +2,7 @@
 using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
+using static System.Collections.Specialized.BitVector32;
 
 namespace SecondBrain.Repositories.Neo4j
 {
@@ -48,6 +49,7 @@ namespace SecondBrain.Repositories.Neo4j
                 var query = _graph.Cypher
                     .Match("(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileSectionNode section) => section.id == sectionId)
                     .ReturnDistinct(section => section.As<FileSectionNode>());
 
                 return (await query.ResultsAsync).Single();
@@ -229,7 +231,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .Match("(user: User)<-[:CreatedBy|UpdatedBy]-(section:FileSection)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileSectionNode section) => section.id == sectionId)
-                    .Match("(section)-[]-(attachment:Attachment)")
+                    .OptionalMatch("(section)-[]-(attachment:Attachment)")
                     .DetachDelete("attachment")
                     .DetachDelete("section");
 

@@ -36,6 +36,25 @@ namespace SecondBrain.API.Controllers.FileSection
         }
 
         /// <summary>
+        /// Create File section
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPut]
+        public async Task<IActionResult> CreateSectionAsync([FromBody] FileSectionCreateRequestDTO requestData)
+        {
+            try
+            {
+                return Ok(await _fileSectionService.CreateSectionAsync(requestData, User));
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        /// <summary>
         /// Get File section meta data by file id
         /// </summary>
         /// <param name="fileId"></param>
@@ -66,6 +85,26 @@ namespace SecondBrain.API.Controllers.FileSection
             try
             {
                 await _fileSectionService.UpdateFileSectionMetaDataAsync(requestData, User);
+                return Ok(true);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Delete File section
+        /// </summary>
+        /// <param name="sectionId"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpDelete]
+        public async Task<IActionResult> DeleteFileSectionMetaDataAsync([FromQuery] Guid sectionId)
+        {
+            try
+            {
+                await _fileSectionService.DeleteFileSectionMetaDataAsync(sectionId, User);
                 return Ok(true);
             }
             catch (Exception e)

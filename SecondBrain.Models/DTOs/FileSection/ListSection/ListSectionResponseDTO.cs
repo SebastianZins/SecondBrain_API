@@ -7,7 +7,7 @@ namespace SecondBrain.Models.DTOs.FileSection.ListSelection
     public class ListSectionResponseDTO : FileSectionResponseDTO
     {
         [JsonProperty("items")]
-        public List<string> Items = new List<string>();
+        public List<string> Items { get; set; } = new List<string>();
 
         public ListSectionResponseDTO(FileSectionNode metaData, ListSectionModel data) : base(metaData)
         {

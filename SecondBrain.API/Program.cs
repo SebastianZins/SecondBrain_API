@@ -28,12 +28,14 @@ builder.Services.AddSingleton<AttachmentsContext>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileStructureService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<FileSectionService>();
 builder.Services.AddScoped<ListSectionService>();
 
 builder.Services.AddScoped<FileStructureRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<AttachmentRepository>();
+builder.Services.AddScoped<FileRepository>();
 builder.Services.AddScoped<FileSectionRepository>();
 builder.Services.AddScoped<ListSectionRepository>();
 

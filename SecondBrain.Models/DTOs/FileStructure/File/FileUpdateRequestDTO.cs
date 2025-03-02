@@ -8,9 +8,6 @@ namespace SecondBrain.Models.DTOs.FileStructure.File
         [JsonProperty("id")]
         public Guid Id { get; set; } = Guid.Empty;
 
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
-
         [JsonProperty("title")]
         public string Title { get; set; } = string.Empty;
 
@@ -29,7 +26,6 @@ namespace SecondBrain.Models.DTOs.FileStructure.File
         public FileNode WriteToModel(FileNode node)
         {
             node.id = Id;
-            node.name = Name;
             node.title = Title;
             node.subtitle = Subtitle;
             node.tags = Tags;

@@ -42,6 +42,21 @@ namespace SecondBrain.Repositories.MongoDB
             }
         }
 
+        public async Task<List<ListSectionModel>> GetByStructureIdsAsync(List<Guid> ids)
+        {
+            try
+            {
+                return await _collection
+                                .Find(section => ids.Contains(section.structureId))
+                                .ToListAsync();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error:", e.Message);
+                throw new MongoException("Error: Loading list section data failed", e);
+            }
+        }
+
         public async Task CreateAsync(ListSectionModel item)
         {
             try
@@ -97,17 +112,15 @@ namespace SecondBrain.Repositories.MongoDB
             try
             {
                 UpdateResult actionResult = await _collection.UpdateOneAsync(filter, update);
-
                 return actionResult.IsAcknowledged
                     && actionResult.ModifiedCount > 0;
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Deleting list section data failed", e);
+                throw new MongoException("Error: Updating list section data failed", e);
             }
         }
-
 
         public async Task<string> CreateIndexAsync()
         {

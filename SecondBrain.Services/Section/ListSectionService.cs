@@ -4,6 +4,7 @@ using SecondBrain.Models.DTOs.FileSection;
 using SecondBrain.Models.DTOs.FileSection.ListSelection;
 using SecondBrain.Repositories.MongoDB;
 using SecondBrain.Repositories.Neo4j;
+using SecondBrain.Services.FileStructure;
 using SecondBrain.Utils;
 using System.Security.Claims;
 
@@ -13,13 +14,16 @@ namespace SecondBrain.Services.Section
     {
         private readonly ListSectionRepository _dataRepo;
         private readonly FileSectionRepository _metaDataRepo;
+        private readonly FileService _fileService;
 
 
-        public ListSectionService(ListSectionRepository dataRepo, FileSectionRepository metaDataRepo)
+        public ListSectionService(ListSectionRepository dataRepo, FileSectionRepository metaDataRepo, FileService fileService)
         {
             _metaDataRepo = metaDataRepo;
             _dataRepo = dataRepo;
             _dataRepo.CreateIndexAsync().Wait();
+
+            _fileService = fileService;
         }
 
         /// <summary>
@@ -75,6 +79,8 @@ namespace SecondBrain.Services.Section
             ListSectionModel data = new ListSectionModel() { structureId = metaData.id };
             await _dataRepo.CreateAsync(data);
 
+            await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
+
             return new ListSectionResponseDTO(metaData, data);
         }
 
@@ -90,19 +96,6 @@ namespace SecondBrain.Services.Section
             FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
 
             await _dataRepo.UpdateAsync(data.Id, data.Items);
-        }
-
-        /// <summary>
-        /// Delete file section
-        /// </summary>
-        /// <param name="sectionId"></param>
-        /// <param name="claims"></param>
-        /// <returns></returns>
-        public async Task DeleteSectionAsync(Guid sectionId, ClaimsPrincipal claims)
-        {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            await _metaDataRepo.DeleteAsync(sectionId, userId);
-            await _dataRepo.DeleteAsync(sectionId);
         }
     }
 }

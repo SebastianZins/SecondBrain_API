@@ -55,7 +55,7 @@ namespace SecondBrain.Repositories.Neo4j
             }
         }
 
-        public async Task<int> GetSiblingCountAsync(Guid itemId, Guid userId)
+        public async Task<int> GetChildCountAsync(Guid itemId, Guid userId)
         {
             try
             {
@@ -63,16 +63,16 @@ namespace SecondBrain.Repositories.Neo4j
                     .Match("(item:FileStructure)-[]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileStructureNode item) => item.id == itemId)
-                    .Match("(item)<-[:ParentFolderOf]-(:FileStructure)-[:ParentFolderOf]->(sibling:FileStructure)")
+                    .Match("(item)-[:ParentFolderOf]->(sibling:FileStructure)")
                     .Where((FileStructureNode sibling) => sibling.id != itemId)
-                    .ReturnDistinct(item => item.As<FileStructureNode>().id);
+                    .ReturnDistinct(sibling => sibling.As<FileStructureNode>().id);
 
                 return (await query.ResultsAsync).Count();
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Number of sibling items could not be determined.");
+                throw new Neo4jException("Error:", "Number of child items could not be determined.");
             }
         }
 

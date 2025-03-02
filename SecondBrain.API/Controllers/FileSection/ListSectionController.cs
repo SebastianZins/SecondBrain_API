@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SecondBrain.Models.DTOs.FileSection;
+using SecondBrain.Models.DTOs.FileSection.ListSection;
 using SecondBrain.Models.DTOs.FileSection.ListSelection;
 using SecondBrain.Services.Section;
 
@@ -56,25 +57,6 @@ namespace SecondBrain.API.Controllers.FileSection
         }
 
         /// <summary>
-        /// Create File section
-        /// </summary>
-        /// <param name="requestData"></param>
-        /// <returns></returns>
-        [Authorize]
-        [HttpPost]
-        public async Task<IActionResult> CreateSectionAsync([FromBody] FileSectionCreateRequestDTO requestData)
-        {
-            try
-            {
-                return Ok(await _listSectionService.CreateSectionAsync(requestData, User));
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
-        }
-
-        /// <summary>
         /// Update File section data
         /// </summary>
         /// <param name="requestData"></param>
@@ -86,26 +68,6 @@ namespace SecondBrain.API.Controllers.FileSection
             try
             {
                 await _listSectionService.UpdateDataAsync(requestData, User);
-                return Ok(true);
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e.Message);
-            }
-        }
-
-        /// <summary>
-        /// Delete file section
-        /// </summary>
-        /// <param name="sectionId"></param>
-        /// <returns></returns>
-        [Authorize]
-        [HttpDelete]
-        public async Task<IActionResult> DeleteSectionAsync([FromQuery] Guid sectionId)
-        {
-            try
-            {
-                await _listSectionService.DeleteSectionAsync(sectionId, User);
                 return Ok(true);
             }
             catch (Exception e)

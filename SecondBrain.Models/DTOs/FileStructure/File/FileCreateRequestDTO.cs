@@ -1,14 +1,10 @@
 ﻿using Newtonsoft.Json;
-using SecondBrain.Core.Enums;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 
 namespace SecondBrain.Models.DTOs.FileStructure.File
 {
     public class FileCreateRequestDTO : FileStructureCreateRequestDTO
     {
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
-
         [JsonProperty("title")]
         public string Title { get; set; } = string.Empty;
 
@@ -29,7 +25,6 @@ namespace SecondBrain.Models.DTOs.FileStructure.File
             return new FileNode()
             {
                 id = Guid.NewGuid(),
-                name = Name,
                 title = Title,
                 subtitle = Subtitle,
                 tags = Tags,

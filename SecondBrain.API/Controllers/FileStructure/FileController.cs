@@ -26,11 +26,11 @@ namespace SecondBrain.API.Controllers.File
         /// <returns></returns>
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult> GetByIdAsync([FromQuery] Guid fileId)
+        public async Task<ActionResult> GetByIdWithDataAsync([FromQuery] Guid fileId)
         {
             try
             {
-                return Ok(await _fileService.GetByIdAsync(fileId, User));
+                return Ok(await _fileService.GetByIdWithDataAsync(fileId, User));
             }
             catch (Exception e)
             {
@@ -67,9 +67,8 @@ namespace SecondBrain.API.Controllers.File
         public async Task<ActionResult> CreateAsync([FromBody] FileCreateRequestDTO requestData)
         {
             try
-            {
-                await _fileService.CreateAsync(requestData, User);
-                return Ok(await _fileStructureService.GetFileStructureItemsAsync(User));
+            {                
+                return Ok(await _fileService.CreateAsync(requestData, User));
             }
             catch (Exception e)
             {
@@ -89,6 +88,27 @@ namespace SecondBrain.API.Controllers.File
             try
             {
                 await _fileService.UpdateAsync(requestData, User);
+                return Ok(true);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Update File section order
+        /// </summary>
+        /// <param name="fileSectionOrder"></param>
+        /// <returns></returns>
+        [HttpPatch]
+        [Route("order")]
+        [Authorize]
+        public async Task<ActionResult> UpdateAsync([FromBody] List<Guid> fileSectionOrder)
+        {
+            try
+            {
+                await _fileService.UpdateSectionOrderAsync(fileSectionOrder, User);
                 return Ok(true);
             }
             catch (Exception e)

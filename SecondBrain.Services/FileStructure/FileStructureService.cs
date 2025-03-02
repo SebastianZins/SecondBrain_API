@@ -4,7 +4,6 @@ using SecondBrain.Models.DTOs.FileStructure;
 using SecondBrain.Repositories.MongoDB;
 using SecondBrain.Repositories.Neo4j;
 using SecondBrain.Utils;
-using System.Collections.Generic;
 using System.Security.Claims;
 
 namespace SecondBrain.Services.FileStructure
@@ -231,9 +230,9 @@ namespace SecondBrain.Services.FileStructure
             return item;
         }
 
-        public async Task<int> GetSiblingCountAsync(Guid itemId, Guid userId)
+        public async Task<int> GetChildCountAsync(Guid itemId, Guid userId)
         {
-            return await _fileStructureRepository.GetSiblingCountAsync(itemId, userId);
+            return await _fileStructureRepository.GetChildCountAsync(itemId, userId);
         }
     }
 }

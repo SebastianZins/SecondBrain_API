@@ -40,6 +40,32 @@ namespace SecondBrain.Repositories.Neo4j
         }
 
         /// <summary>
+        /// Get File info by section id
+        /// </summary>
+        /// <param name="sectionId"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="Neo4jException"></exception>
+        public async Task<FileNode> GetBySectionIdAsync(Guid sectionId, Guid userId)
+        {
+            try
+            {
+                var query = _graph.Cypher
+                    .Match("(file:File)-[:Contains]->(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileSectionNode section) => section.id == sectionId)
+                    .ReturnDistinct(file => file.As<FileNode>());
+
+                return (await query.ResultsAsync).Single();
+            }
+            catch (Exception e)
+            {
+                Console.Write("Error: ", e.Message);
+                throw new Neo4jException("Error: File not found");
+            }
+        }
+
+        /// <summary>
         /// Get File info by file structure item (so by path)
         /// </summary>
         /// <param name="fileStructureId"></param>
@@ -84,13 +110,13 @@ namespace SecondBrain.Repositories.Neo4j
                     .Where((UserNode user) => user.id == userId)
                     .Match("(item: FileStructure)")
                     .Where((FileStructureNode item) => item.id == fileStructureId)
-                    .Merge("(file:File{{id:$data.id}})")
+                    .Merge("(file:File:FileStructure{id:$id})")
                     .OnCreate()
                     .Set("file = $data")
-                    .Merge("(file)<-[:StructureItemOf]-(item)")
+                    .Merge("(file)<-[:ParentFolderOf]-(item)")
                     .Merge("(file)-[:CreatedBy {created:$now}]->(user)")
                     .Merge("(file)-[:UpdatedBy {updated:$now}]->(user)")
-                    .WithParams(new {now, data})
+                    .WithParams(new {now, data, data.id})
                     .ReturnDistinct(file => file.As<FileNode>());
 
                 return (await query.ResultsAsync).Single();
@@ -124,6 +150,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .Set("file.tags = $data.tags")
                     .Set("file.category = $data.category")
                     .Set("file.fileClasses = $data.fileClasses")
+                    .Set("file.sectionsOrder = $data.sectionsOrder")
                     .With("file, user")
                     .Match("(file)-[rel:UpdatedBy]->(:User)")
                     .Delete("rel")

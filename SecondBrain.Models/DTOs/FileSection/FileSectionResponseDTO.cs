@@ -36,4 +36,4 @@ namespace SecondBrain.Models.DTOs.FileSection
             IsVisible = node.isVisible;
         }
     }
-    }
+}
