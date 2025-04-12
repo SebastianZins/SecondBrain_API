@@ -29,12 +29,14 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileStructureService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FileService>();
-builder.Services.AddScoped<FileSectionService>();
-builder.Services.AddScoped<ListSectionService>();
+builder.Services.AddScoped<FileSectionDataService>();
+builder.Services.AddScoped<FileSectionMetaDataService>();
+builder.Services.AddScoped<ListSectionDataService>();
 
 builder.Services.AddScoped<FileStructureRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<AttachmentRepository>();
+builder.Services.AddScoped<TagRepository>();
 builder.Services.AddScoped<FileRepository>();
 builder.Services.AddScoped<FileSectionRepository>();
 builder.Services.AddScoped<ListSectionRepository>();

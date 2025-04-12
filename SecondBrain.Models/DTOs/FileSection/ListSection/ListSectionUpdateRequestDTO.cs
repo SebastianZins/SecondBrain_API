@@ -9,5 +9,8 @@ namespace SecondBrain.Models.DTOs.FileSection.ListSelection
 
         [JsonProperty("items")]
         public List<string> Items { get; set; } = new List<string>();
+
+        [JsonProperty("tags")]
+        public List<string> Tags { get; set; } = new List<string>();
     }
 }

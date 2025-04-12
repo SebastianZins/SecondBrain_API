@@ -9,9 +9,9 @@ namespace SecondBrain.API.Controllers.FileSection
     [Route("section/metaData")]
     public class FileSectionController : ControllerBase
     {
-        private readonly FileSectionService _fileSectionService;
+        private readonly FileSectionMetaDataService _fileSectionService;
 
-        public FileSectionController(FileSectionService fileSectionService)
+        public FileSectionController(FileSectionMetaDataService fileSectionService)
         {
             _fileSectionService = fileSectionService;
         }

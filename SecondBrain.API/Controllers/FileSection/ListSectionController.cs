@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SecondBrain.Models.DTOs.FileSection;
-using SecondBrain.Models.DTOs.FileSection.ListSection;
 using SecondBrain.Models.DTOs.FileSection.ListSelection;
 using SecondBrain.Services.Section;
 
@@ -11,9 +9,9 @@ namespace SecondBrain.API.Controllers.FileSection
     [Route("section/list")]
     public class ListSectionController : ControllerBase
     {
-        private readonly ListSectionService _listSectionService;
+        private readonly ListSectionDataService _listSectionService;
 
-        public ListSectionController(ListSectionService listSectionService)
+        public ListSectionController(ListSectionDataService listSectionService)
         {
             _listSectionService = listSectionService;
         }
