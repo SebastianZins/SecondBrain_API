@@ -17,14 +17,14 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.Section
 {
-    public class FileSectionService
+    public class FileSectionMetaDataService
     {
         private readonly FileService _fileService;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
 
 
-        public FileSectionService(FileService fileService, FileSectionRepository fileSectionRepository, ListSectionRepository listSectionRepository)
+        public FileSectionMetaDataService(FileService fileService, FileSectionRepository fileSectionRepository, ListSectionRepository listSectionRepository)
         {
             _fileService = fileService;
             _fileSectionRepository = fileSectionRepository;

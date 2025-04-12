@@ -10,14 +10,14 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.Section
 {
-    public class ListSectionService
+    public class ListSectionDataService : FileSectionDataService
     {
         private readonly ListSectionRepository _dataRepo;
         private readonly FileSectionRepository _metaDataRepo;
         private readonly FileService _fileService;
 
 
-        public ListSectionService(ListSectionRepository dataRepo, FileSectionRepository metaDataRepo, FileService fileService)
+        public ListSectionDataService(ListSectionRepository dataRepo, FileSectionRepository metaDataRepo, FileService fileService, TagRepository tagRepository) : base (tagRepository)
         {
             _metaDataRepo = metaDataRepo;
             _dataRepo = dataRepo;
@@ -94,6 +94,8 @@ namespace SecondBrain.Services.Section
         {
             Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
             FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
+
+            await UpdateTagsAsync(data.Id, data.Tags, userId);
 
             await _dataRepo.UpdateAsync(data.Id, data.Items);
         }

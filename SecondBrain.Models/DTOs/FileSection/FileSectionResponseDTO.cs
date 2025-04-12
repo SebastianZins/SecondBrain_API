@@ -24,6 +24,9 @@ namespace SecondBrain.Models.DTOs.FileSection
         [JsonProperty("sectionType")]
         public ESectionType SectionType { get; set; } = 0;
 
+        [JsonProperty("tags")]
+        public List<string> Tags { get; set; } = new List<string>();
+
         public FileSectionResponseDTO() { }
 
         public FileSectionResponseDTO(FileSectionNode node)

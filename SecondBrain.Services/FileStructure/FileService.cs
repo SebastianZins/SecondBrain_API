@@ -155,7 +155,12 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> DeleteAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            return await _fileStructureService.DeleteFileStructureItemAsync(fileId, claims);
+            await _fileStructureService.DeleteFileStructureItemAsync(fileId, claims);
+
+            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            await _fileRepository.DeleteAsync(fileId, userId);
+
+            return await _fileStructureService.GetFileStructureItemsAsync(claims);
         }
 
         public async Task<FileNode> GetBySectionIdAsync(Guid sectionId, Guid userId)
@@ -165,7 +170,7 @@ namespace SecondBrain.Services.FileStructure
 
         public async Task AddSectionOrderItemAsync(Guid sectionId, Guid userId, int position)
         {
-            FileNode file = await _fileRepository.GetByIdAsync(sectionId, userId);
+            FileNode file = await _fileRepository.GetBySectionIdAsync(sectionId, userId);
             file.sectionsOrder.Insert(position, sectionId);
 
             await _fileRepository.UpdateAsync(file, userId);
@@ -175,7 +180,7 @@ namespace SecondBrain.Services.FileStructure
         {
             Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetByIdAsync(sectionOrder[0], userId);
+            FileNode file = await _fileRepository.GetBySectionIdAsync(sectionOrder[0], userId);
             file.sectionsOrder = sectionOrder;
 
             await _fileRepository.UpdateAsync(file, userId);

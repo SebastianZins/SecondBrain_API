@@ -28,6 +28,7 @@ namespace SecondBrain.Repositories.Neo4j
                 var query = _graph.Cypher
                     .Match("(file:File)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileNode file) => file.id == fileId)
                     .ReturnDistinct(file => file.As<FileNode>());
 
                 return (await query.ResultsAsync).Single();
