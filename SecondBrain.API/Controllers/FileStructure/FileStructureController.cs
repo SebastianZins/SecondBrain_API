@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SecondBrain.Database.MongoDB;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DTOs.FileStructure;
 using SecondBrain.Services.FileStructure;
 
@@ -12,9 +14,9 @@ namespace SecondBrain.API.Controllers.File
     {
         private readonly FileStructureService _fileStructureService;
 
-        public FileStructureController(FileStructureService fileStructureService)
+        public FileStructureController(Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
-            _fileStructureService = fileStructureService;
+            _fileStructureService = new FileStructureService(graph, fileSectionContext);
         }
 
         [HttpGet]

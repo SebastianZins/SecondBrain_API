@@ -2,15 +2,9 @@
 
 namespace SecondBrain.Models.DTOs.FileSection.ListSelection
 {
-    public class ListSectionUpdateRequestDTO
+    public class ListSectionUpdateRequestDTO : FileSectionDataUpdateRequestDTO
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; } = Guid.Empty;
-
         [JsonProperty("items")]
         public List<string> Items { get; set; } = new List<string>();
-
-        [JsonProperty("tags")]
-        public List<string> Tags { get; set; } = new List<string>();
     }
 }

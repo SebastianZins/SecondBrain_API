@@ -1,4 +1,6 @@
 ﻿using SecondBrain.Core.Enums;
+using SecondBrain.Database.MongoDB;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.File;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 using SecondBrain.Models.DatabaseModels.Neo4j;
@@ -22,13 +24,15 @@ namespace SecondBrain.Services.Section
         private readonly FileService _fileService;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly TextSectionRepository _textSectionRepository;
 
 
-        public FileSectionMetaDataService(FileService fileService, FileSectionRepository fileSectionRepository, ListSectionRepository listSectionRepository)
+        public FileSectionMetaDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
             _fileService = fileService;
-            _fileSectionRepository = fileSectionRepository;
-            _listSectionRepository = listSectionRepository;
+            _fileSectionRepository = new FileSectionRepository(graph);
+            _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _textSectionRepository = new TextSectionRepository(fileSectionContext);
         }
 
         /// <summary>
@@ -67,7 +71,7 @@ namespace SecondBrain.Services.Section
         /// <param name="data"></param>
         /// <param name="claims"></param>
         /// <returns></returns>
-        public async Task UpdateFileSectionMetaDataAsync(FileSectionUpdateRequestDTO data, ClaimsPrincipal claims)
+        public async Task UpdateFileSectionMetaDataAsync(FileSectionMetaDataUpdateRequestDTO data, ClaimsPrincipal claims)
         {
             Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
             FileSectionNode file = await _fileSectionRepository.GetByIdAsync(data.Id, userId);
@@ -130,6 +134,7 @@ namespace SecondBrain.Services.Section
             {
                 case ESectionType.TEXT:
                     TextSectionModel textData = new TextSectionModel() { structureId = metaData.id };
+                    await _textSectionRepository.CreateAsync(textData);
                     response = new TextSectionResponseDTO(metaData, textData);
                     break;
                 case ESectionType.MARKDOWN:

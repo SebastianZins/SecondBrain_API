@@ -1,15 +1,10 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.InternalModels;
-using SecondBrain.Repositories.MongoDB;
-using SecondBrain.Repositories.Neo4j;
-using SecondBrain.Services.Auth;
 using SecondBrain.Services.FileStructure;
-using SecondBrain.Services.Section;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,21 +20,8 @@ builder.Services.AddSingleton<Neo4jGraph>();
 builder.Services.AddSingleton<FileSectionContext>();
 builder.Services.AddSingleton<AttachmentsContext>();
 
-builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<FileStructureService>();
-builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<FileService>();
-builder.Services.AddScoped<FileSectionDataService>();
-builder.Services.AddScoped<FileSectionMetaDataService>();
-builder.Services.AddScoped<ListSectionDataService>();
-
-builder.Services.AddScoped<FileStructureRepository>();
-builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<AttachmentRepository>();
-builder.Services.AddScoped<TagRepository>();
-builder.Services.AddScoped<FileRepository>();
-builder.Services.AddScoped<FileSectionRepository>();
-builder.Services.AddScoped<ListSectionRepository>();
 
 builder.Services.AddOptions();
 builder.Services.Configure<JwtSettings>(configurations.GetSection("JwtSettings"));

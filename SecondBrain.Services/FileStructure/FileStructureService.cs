@@ -1,4 +1,6 @@
 ﻿using SecondBrain.Core.Enums;
+using SecondBrain.Database.MongoDB;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.FileStructure;
 using SecondBrain.Repositories.MongoDB;
@@ -13,15 +15,18 @@ namespace SecondBrain.Services.FileStructure
         private readonly FileStructureRepository _fileStructureRepository;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly TextSectionRepository _textSectionRepository;
 
 
-        public FileStructureService(FileStructureRepository fileStructureRepository, FileSectionRepository fileSectionRepository, ListSectionRepository listSectionRepository)
+        public FileStructureService(Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
-            _fileStructureRepository = fileStructureRepository;
-            _fileSectionRepository = fileSectionRepository;
-            _listSectionRepository = listSectionRepository;
+            _fileStructureRepository = new FileStructureRepository(graph);
+            _fileSectionRepository = new FileSectionRepository(graph);
+            _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _textSectionRepository = new TextSectionRepository(fileSectionContext);
 
             _listSectionRepository.CreateIndexAsync().Wait();
+            _textSectionRepository.CreateIndexAsync().Wait();
         }
 
         /// <summary>
@@ -125,7 +130,8 @@ namespace SecondBrain.Services.FileStructure
             await ShiftFileStructureItemLeft(item.treeId, int.MaxValue, userId, parent, siblings);
 
             List<Guid> structureIds = await _fileSectionRepository.GetByFolderIdAsync(id, userId);
-            await _listSectionRepository.DeleteByIdListAsync(structureIds);
+            await _listSectionRepository.DeleteByIdListAsync(structureIds); ;
+            await _textSectionRepository.DeleteByIdListAsync(structureIds);
             await _fileStructureRepository.DeleteFileStructureItemAsync(id, userId);
 
             return await GetFileStructureItemsAsync(claims);

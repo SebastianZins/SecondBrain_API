@@ -1,7 +1,10 @@
 ﻿using SecondBrain.Core.Enums;
+using SecondBrain.Database.MongoDB;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.FileSection.ListSelection;
+using SecondBrain.Models.DTOs.FileSection.TextSection;
 using SecondBrain.Models.DTOs.FileStructure;
 using SecondBrain.Models.DTOs.FileStructure.File;
 using SecondBrain.Repositories.MongoDB;
@@ -15,17 +18,16 @@ namespace SecondBrain.Services.FileStructure
     {
         private readonly FileRepository _fileRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly TextSectionRepository _textSectionRepository;
         private readonly FileStructureService _fileStructureService;
         private readonly FileSectionRepository _fileSectionRepository;
 
-        public FileService( FileRepository fileRepository, 
-                            FileSectionRepository fileSectionRepository, 
-                            ListSectionRepository listSectionRepository, 
-                            FileStructureService fileStructureService)
+        public FileService(FileStructureService fileStructureService, Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
-            _fileRepository = fileRepository;
-            _listSectionRepository = listSectionRepository;
-            _fileSectionRepository = fileSectionRepository;
+            _fileRepository = new FileRepository(graph);
+            _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _textSectionRepository = new TextSectionRepository(fileSectionContext);
+            _fileSectionRepository = new FileSectionRepository(graph);
             _fileStructureService = fileStructureService;
 
             _listSectionRepository.CreateIndexAsync().Wait();
@@ -61,9 +63,9 @@ namespace SecondBrain.Services.FileStructure
             List<FileSectionNode> sections = await _fileSectionRepository.GetByFileIdAsync(file.id, userId);
 
             //// text sections
-            //List<FileSectionNode> textSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TEXT).ToList();
-            //List<TextSectionModel> textSectionModels = await _textSectionRepository.GetByStructureIdsAsync(textSectionMetaData.Select(s => s.id).ToList());
-            //response.TextSections = textSectionModels.Select((model, i) => new TextSectionResponseDTO(textSectionMetaData[i], model)).ToList();
+            List<FileSectionNode> textSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TEXT).ToList();
+            List<TextSectionModel> textSectionModels = await _textSectionRepository.GetByStructureIdsAsync(textSectionMetaData.Select(s => s.id).ToList());
+            response.TextSections = textSectionModels.Select((model, i) => new TextSectionResponseDTO(textSectionMetaData[i], model)).ToList();
             //// markdown sections
             //List<FileSectionNode> markdownSectionMetaData = sections.Where(s => s.sectionType == ESectionType.MARKDOWN).ToList();
             //List<MarkdownSectionModel> markdownSectionModels = await _markdownSectionRepository.GetByStructureIdsAsync(markdownSectionMetaData.Select(s => s.id).ToList());
@@ -115,7 +117,7 @@ namespace SecondBrain.Services.FileStructure
             file.id = Guid.NewGuid();
             FileStructureNode parent = await _fileStructureService.GetFileStructureItem(userId, requestData.ParentFolder, true);
             file.treeId = (await _fileStructureService.GetChildCountAsync(parent.id, userId));
-            file = await _fileRepository.CreateAsync(file, parent.id, userId); 
+            file = await _fileRepository.CreateAsync(file, parent.id, userId);
             return new FileResponseDTO(file);
         }
 
@@ -141,8 +143,8 @@ namespace SecondBrain.Services.FileStructure
         /// <param name="data"></param>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public async Task<FileResponseDTO> UpdateAsync(FileNode data, Guid userId) 
-        { 
+        public async Task<FileResponseDTO> UpdateAsync(FileNode data, Guid userId)
+        {
             FileNode file = await _fileRepository.UpdateAsync(data, userId);
             return new FileResponseDTO(file);
         }

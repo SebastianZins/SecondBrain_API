@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.Auth;
 using SecondBrain.Models.DTOs.User;
@@ -21,9 +22,9 @@ namespace SecondBrain.Services.Auth
         private JwtSettings settings;
         private readonly UserRepository _userRepository;
 
-        public AuthService(IOptions<JwtSettings> settings, UserRepository userRepository)
+        public AuthService(IOptions<JwtSettings> settings, Neo4jGraph graph)
         {
-            _userRepository = userRepository;
+            _userRepository = new UserRepository(graph);
             this.settings = settings.Value;
         }
 

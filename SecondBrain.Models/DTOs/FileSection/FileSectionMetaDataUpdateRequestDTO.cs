@@ -4,7 +4,7 @@ using SecondBrain.Models.DatabaseModels.Neo4j;
 
 namespace SecondBrain.Models.DTOs.FileSection
 {
-    public class FileSectionUpdateRequestDTO
+    public class FileSectionMetaDataUpdateRequestDTO
     {
         [JsonProperty("id")]
         public Guid Id { get; set; } = Guid.Empty;
