@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DTOs.User;
 using SecondBrain.Services.Auth;
 
@@ -12,9 +13,9 @@ namespace SecondBrain.API.Controllers.Auth
     {
         private readonly UserService _userService;
 
-        public UserController(UserService userService)
+        public UserController(Neo4jGraph graph)
         {
-            _userService = userService;
+            _userService = new UserService(graph);
         }
 
         /// <summary>

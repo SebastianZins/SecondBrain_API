@@ -1,4 +1,5 @@
-﻿using SecondBrain.Repositories.Neo4j;
+﻿using SecondBrain.Database.Neo4j;
+using SecondBrain.Repositories.Neo4j;
 
 namespace SecondBrain.Services.Section
 {
@@ -7,9 +8,9 @@ namespace SecondBrain.Services.Section
         private readonly TagRepository _tagRepository;
 
 
-        public FileSectionDataService(TagRepository tagRepository)
+        public FileSectionDataService(Neo4jGraph graph)
         {
-            _tagRepository = tagRepository;
+            _tagRepository = new TagRepository(graph);
         }
 
         /// <summary>

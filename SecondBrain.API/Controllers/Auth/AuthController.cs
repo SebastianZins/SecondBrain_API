@@ -2,9 +2,12 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.Auth;
 using SecondBrain.Models.DTOs.User;
+using SecondBrain.Models.InternalModels;
 using SecondBrain.Services.Auth;
 using SecondBrain.Utils;
 using System.Security.Claims;
@@ -18,10 +21,10 @@ namespace SecondBrain.API.Controllers.Auth
         private readonly AuthService _authService;
         private readonly UserService _userService;
 
-        public AuthController(AuthService authService, UserService userService)
+        public AuthController(IOptions<JwtSettings> settings,  Neo4jGraph graph)
         {
-            _authService = authService;
-            _userService = userService;
+            _authService = new AuthService(settings, graph);
+            _userService = new UserService(graph);
         }
 
         [AllowAnonymous]

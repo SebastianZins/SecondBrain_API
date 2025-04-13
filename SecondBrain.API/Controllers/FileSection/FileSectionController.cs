@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SecondBrain.Database.MongoDB;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DTOs.FileSection;
+using SecondBrain.Services.FileStructure;
 using SecondBrain.Services.Section;
 
 namespace SecondBrain.API.Controllers.FileSection
@@ -11,9 +14,9 @@ namespace SecondBrain.API.Controllers.FileSection
     {
         private readonly FileSectionMetaDataService _fileSectionService;
 
-        public FileSectionController(FileSectionMetaDataService fileSectionService)
+        public FileSectionController(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
-            _fileSectionService = fileSectionService;
+            _fileSectionService = new FileSectionMetaDataService(fileService, graph, fileSectionContext);
         }
 
         /// <summary>
@@ -80,7 +83,7 @@ namespace SecondBrain.API.Controllers.FileSection
         /// <returns></returns>
         [Authorize]
         [HttpPatch]
-        public async Task<IActionResult> UpdateFileSectionMetaDataAsync([FromBody] FileSectionUpdateRequestDTO requestData)
+        public async Task<IActionResult> UpdateFileSectionMetaDataAsync([FromBody] FileSectionMetaDataUpdateRequestDTO requestData)
         {
             try
             {

@@ -2,21 +2,21 @@
 using Microsoft.AspNetCore.Mvc;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
-using SecondBrain.Models.DTOs.FileSection.ListSelection;
+using SecondBrain.Models.DTOs.FileSection.TextSection;
 using SecondBrain.Services.FileStructure;
 using SecondBrain.Services.Section;
 
 namespace SecondBrain.API.Controllers.FileSection
 {
     [ApiController]
-    [Route("section/list")]
-    public class ListSectionController : ControllerBase
+    [Route("section/text")]
+    public class TextSectionController : ControllerBase
     {
-        private readonly ListSectionDataService _listSectionService;
+        private readonly TextSectionDataService _textSectionService;
 
-        public ListSectionController(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext)
+        public TextSectionController(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext)
         {
-            _listSectionService = new ListSectionDataService(fileService, graph, fileSectionContext);
+            _textSectionService = new TextSectionDataService(fileService, graph, fileSectionContext);
         }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace SecondBrain.API.Controllers.FileSection
         {
             try
             {
-                return Ok(await _listSectionService.GetSectionByIdAsync(sectionId, User));
+                return Ok(await _textSectionService.GetSectionByIdAsync(sectionId, User));
             }
             catch (Exception e)
             {
@@ -49,7 +49,7 @@ namespace SecondBrain.API.Controllers.FileSection
         {
             try
             {
-                return Ok(await _listSectionService.GetBySectionFileIdAsync(fileId, User));
+                return Ok(await _textSectionService.GetBySectionFileIdAsync(fileId, User));
             }
             catch (Exception e)
             {
@@ -64,11 +64,11 @@ namespace SecondBrain.API.Controllers.FileSection
         /// <returns></returns>
         [Authorize]
         [HttpPatch]
-        public async Task<IActionResult> UpdateDataAsync([FromBody] ListSectionUpdateRequestDTO requestData)
+        public async Task<IActionResult> UpdateDataAsync([FromBody] TextSectionUpdateRequestDTO requestData)
         {
             try
             {
-                await _listSectionService.UpdateDataAsync(requestData, User);
+                await _textSectionService.UpdateDataAsync(requestData, User);
                 return Ok(true);
             }
             catch (Exception e)

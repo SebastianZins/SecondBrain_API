@@ -1,4 +1,5 @@
-﻿using SecondBrain.Models.DatabaseModels.Neo4j;
+﻿using SecondBrain.Database.Neo4j;
+using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.User;
 using SecondBrain.Repositories.Neo4j;
 using SecondBrain.Utils;
@@ -10,9 +11,9 @@ namespace SecondBrain.Services.Auth
     {
         private readonly UserRepository _userRepository;
 
-        public UserService(UserRepository userRepository)
+        public UserService(Neo4jGraph graph)
         {
-            _userRepository = userRepository;
+            _userRepository = new UserRepository(graph);
         }
 
         /// <summary>
