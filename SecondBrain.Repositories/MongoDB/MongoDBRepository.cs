@@ -14,19 +14,11 @@ namespace SecondBrain.Repositories.MongoDB
 
         public async Task<string> CreateIndexAsync()
         {
-            try
-            {
-                IndexKeysDefinition<T> keys = Builders<T>
-                    .IndexKeys
-                    .Ascending(item => item.structureId);
+            IndexKeysDefinition<T> keys = Builders<T>
+                .IndexKeys
+                .Ascending(item => item.structureId);
 
-                return await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(keys));
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Creating index failed", e);
-            }
+            return await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(keys));
         }
     }
 }

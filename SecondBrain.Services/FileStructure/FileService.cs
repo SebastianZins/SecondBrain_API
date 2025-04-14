@@ -1,4 +1,5 @@
-﻿using SecondBrain.Core.Enums;
+﻿using SecondBrain.Core;
+using SecondBrain.Core.Enums;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.File;
@@ -16,8 +17,8 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.FileStructure
 {
-    public class FileService
-    {
+    public class FileService : Service
+    { 
         private readonly FileRepository _fileRepository;
         private readonly ListSectionRepository _listSectionRepository;
         private readonly ChecklistSectionRepository _checklistSectionRepository;
@@ -25,7 +26,7 @@ namespace SecondBrain.Services.FileStructure
         private readonly FileStructureService _fileStructureService;
         private readonly FileSectionRepository _fileSectionRepository;
 
-        public FileService(FileStructureService fileStructureService, Neo4jGraph graph, FileSectionContext fileSectionContext)
+        public FileService(FileStructureService fileStructureService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base(Constants.ERROR_FILE_STRUCTURE)
         {
             _fileRepository = new FileRepository(graph);
             _listSectionRepository = new ListSectionRepository(fileSectionContext);
@@ -47,10 +48,17 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileResponseDTO> GetByIdAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetByIdAsync(fileId, userId);
-            return new FileResponseDTO(file);
+                FileNode file = await _fileRepository.GetByIdAsync(fileId, userId);
+                return new FileResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -61,38 +69,45 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileDataResponseDTO> GetByIdWithDataAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetByIdAsync(fileId, userId);
-            FileDataResponseDTO response = new FileDataResponseDTO(file);
+                FileNode file = await _fileRepository.GetByIdAsync(fileId, userId);
+                FileDataResponseDTO response = new FileDataResponseDTO(file);
 
-            List<FileSectionNode> sections = await _fileSectionRepository.GetByFileIdAsync(file.id, userId);
+                List<FileSectionNode> sections = await _fileSectionRepository.GetByFileIdAsync(file.id, userId);
 
-            //// text sections
-            List<FileSectionNode> textSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TEXT).ToList();
-            List<TextSectionModel> textSectionModels = await _textSectionRepository.GetByStructureIdsAsync(textSectionMetaData.Select(s => s.id).ToList());
-            response.TextSections = textSectionModels.Select((model, i) => new TextSectionResponseDTO(textSectionMetaData[i], model)).ToList();
-            //// markdown sections
-            //List<FileSectionNode> markdownSectionMetaData = sections.Where(s => s.sectionType == ESectionType.MARKDOWN).ToList();
-            //List<MarkdownSectionModel> markdownSectionModels = await _markdownSectionRepository.GetByStructureIdsAsync(markdownSectionMetaData.Select(s => s.id).ToList());
-            //response.MarkdownSections = markdownSectionModels.Select((model, i) => new MarkdownSectionResponseDTO(markdownSectionMetaData[i], model)).ToList();
-            // list sections
-            List<FileSectionNode> listSectionMetaData = sections.Where(s => s.sectionType == ESectionType.LIST).ToList();
-            List<ListSectionModel> listSectionModels = await _listSectionRepository.GetByStructureIdsAsync(listSectionMetaData.Select(s => s.id).ToList());
-            response.ListSections = listSectionModels.Select((model, i) => new ListSectionResponseDTO(listSectionMetaData[i], model)).ToList();
-            //// checkList sections
-            List<FileSectionNode> checkListSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
-            List<ChecklistSectionModel> checkListSectionModels = await _checklistSectionRepository.GetByStructureIdsAsync(checkListSectionMetaData.Select(s => s.id).ToList());
-            response.CheckListSections = checkListSectionModels.Select((model, i) => new ChecklistSectionResponseDTO(checkListSectionMetaData[i], model)).ToList();
-            //// table sections
-            //List<FileSectionNode> tableSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TABLE).ToList();
-            //List<TableSectionModel> tableSectionModels = await _tableSectionRepository.GetByStructureIdsAsync(tableSectionMetaData.Select(s => s.id).ToList());
-            //response.TableSections = tableSectionModels.Select((model, i) => new TableSectionResponseDTO(tableSectionMetaData[i], model)).ToList();
-            //// overview sections
-            //List<FileSectionNode> overviewSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
-            //List<OverviewSectionModel> overviewSectionModels = await _overviewSectionRepository.GetByStructureIdsAsync(overviewSectionMetaData.Select(s => s.id).ToList());
-            //response.OverviewSections = overviewSectionModels.Select((model, i) => new OverviewSectionResponseDTO(overviewSectionMetaData[i], model)).ToList();
-            return response;
+                //// text sections
+                List<FileSectionNode> textSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TEXT).ToList();
+                List<TextSectionModel> textSectionModels = await _textSectionRepository.GetByStructureIdsAsync(textSectionMetaData.Select(s => s.id).ToList());
+                response.TextSections = textSectionModels.Select((model, i) => new TextSectionResponseDTO(textSectionMetaData[i], model)).ToList();
+                //// markdown sections
+                //List<FileSectionNode> markdownSectionMetaData = sections.Where(s => s.sectionType == ESectionType.MARKDOWN).ToList();
+                //List<MarkdownSectionModel> markdownSectionModels = await _markdownSectionRepository.GetByStructureIdsAsync(markdownSectionMetaData.Select(s => s.id).ToList());
+                //response.MarkdownSections = markdownSectionModels.Select((model, i) => new MarkdownSectionResponseDTO(markdownSectionMetaData[i], model)).ToList();
+                // list sections
+                List<FileSectionNode> listSectionMetaData = sections.Where(s => s.sectionType == ESectionType.LIST).ToList();
+                List<ListSectionModel> listSectionModels = await _listSectionRepository.GetByStructureIdsAsync(listSectionMetaData.Select(s => s.id).ToList());
+                response.ListSections = listSectionModels.Select((model, i) => new ListSectionResponseDTO(listSectionMetaData[i], model)).ToList();
+                //// checkList sections
+                List<FileSectionNode> checkListSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
+                List<ChecklistSectionModel> checkListSectionModels = await _checklistSectionRepository.GetByStructureIdsAsync(checkListSectionMetaData.Select(s => s.id).ToList());
+                response.CheckListSections = checkListSectionModels.Select((model, i) => new ChecklistSectionResponseDTO(checkListSectionMetaData[i], model)).ToList();
+                //// table sections
+                //List<FileSectionNode> tableSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TABLE).ToList();
+                //List<TableSectionModel> tableSectionModels = await _tableSectionRepository.GetByStructureIdsAsync(tableSectionMetaData.Select(s => s.id).ToList());
+                //response.TableSections = tableSectionModels.Select((model, i) => new TableSectionResponseDTO(tableSectionMetaData[i], model)).ToList();
+                //// overview sections
+                //List<FileSectionNode> overviewSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
+                //List<OverviewSectionModel> overviewSectionModels = await _overviewSectionRepository.GetByStructureIdsAsync(overviewSectionMetaData.Select(s => s.id).ToList());
+                //response.OverviewSections = overviewSectionModels.Select((model, i) => new OverviewSectionResponseDTO(overviewSectionMetaData[i], model)).ToList();
+                return response;
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -103,10 +118,17 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileResponseDTO> GetByFileStructureItemAsync(Guid folderId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetByFileStructureItemAsync(folderId, userId);
-            return new FileResponseDTO(file);
+                FileNode file = await _fileRepository.GetByFileStructureItemAsync(folderId, userId);
+                return new FileResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -117,14 +139,21 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileResponseDTO> CreateAsync(FileCreateRequestDTO requestData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = requestData.ToModel();
-            file.id = Guid.NewGuid();
-            FileStructureNode parent = await _fileStructureService.GetFileStructureItem(userId, requestData.ParentFolder, true);
-            file.treeId = (await _fileStructureService.GetChildCountAsync(parent.id, userId));
-            file = await _fileRepository.CreateAsync(file, parent.id, userId);
-            return new FileResponseDTO(file);
+                FileNode file = requestData.ToModel();
+                file.id = Guid.NewGuid();
+                FileStructureNode parent = await _fileStructureService.GetFileStructureItem(userId, requestData.ParentFolder, true);
+                file.treeId = (await _fileStructureService.GetChildCountAsync(parent.id, userId));
+                file = await _fileRepository.CreateAsync(file, parent.id, userId);
+                return new FileResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -135,12 +164,19 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileResponseDTO> UpdateAsync(FileUpdateRequestDTO requestData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetByIdAsync(requestData.Id, userId);
+                FileNode file = await _fileRepository.GetByIdAsync(requestData.Id, userId);
 
-            file = await _fileRepository.UpdateAsync(requestData.WriteToModel(file), userId);
-            return new FileResponseDTO(file);
+                file = await _fileRepository.UpdateAsync(requestData.WriteToModel(file), userId);
+                return new FileResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -151,8 +187,15 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<FileResponseDTO> UpdateAsync(FileNode data, Guid userId)
         {
-            FileNode file = await _fileRepository.UpdateAsync(data, userId);
-            return new FileResponseDTO(file);
+            try
+            {
+                FileNode file = await _fileRepository.UpdateAsync(data, userId);
+                return new FileResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -163,35 +206,63 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> DeleteAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            await _fileStructureService.DeleteFileStructureItemAsync(fileId, claims);
+            try
+            {
+                await _fileStructureService.DeleteFileStructureItemAsync(fileId, claims);
 
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            await _fileRepository.DeleteAsync(fileId, userId);
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                await _fileRepository.DeleteAsync(fileId, userId);
 
-            return await _fileStructureService.GetFileStructureItemsAsync(claims);
+                return await _fileStructureService.GetFileStructureItemsAsync(claims);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_DELETE_FAILED);
+            }
         }
 
         public async Task<FileNode> GetBySectionIdAsync(Guid sectionId, Guid userId)
         {
-            return await _fileRepository.GetBySectionIdAsync(sectionId, userId);
+            try
+            {
+                return await _fileRepository.GetBySectionIdAsync(sectionId, userId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         public async Task AddSectionOrderItemAsync(Guid sectionId, Guid userId, int position)
         {
-            FileNode file = await _fileRepository.GetBySectionIdAsync(sectionId, userId);
-            file.sectionsOrder.Insert(position, sectionId);
+            try
+            {
+                FileNode file = await _fileRepository.GetBySectionIdAsync(sectionId, userId);
+                file.sectionsOrder.Insert(position, sectionId);
 
-            await _fileRepository.UpdateAsync(file, userId);
+                await _fileRepository.UpdateAsync(file, userId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         public async Task UpdateSectionOrderAsync(List<Guid> sectionOrder, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileNode file = await _fileRepository.GetBySectionIdAsync(sectionOrder[0], userId);
-            file.sectionsOrder = sectionOrder;
+                FileNode file = await _fileRepository.GetBySectionIdAsync(sectionOrder[0], userId);
+                file.sectionsOrder = sectionOrder;
 
-            await _fileRepository.UpdateAsync(file, userId);
+                await _fileRepository.UpdateAsync(file, userId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
     }
 }

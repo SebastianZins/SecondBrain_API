@@ -1,4 +1,5 @@
-﻿using SecondBrain.Core.Enums;
+﻿using SecondBrain.Core;
+using SecondBrain.Core.Enums;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
@@ -10,7 +11,7 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.FileStructure
 {
-    public class FileStructureService
+    public class FileStructureService : Service
     {
         private readonly FileStructureRepository _fileStructureRepository;
         private readonly FileSectionRepository _fileSectionRepository;
@@ -19,7 +20,7 @@ namespace SecondBrain.Services.FileStructure
         private readonly TextSectionRepository _textSectionRepository;
 
 
-        public FileStructureService(Neo4jGraph graph, FileSectionContext fileSectionContext)
+        public FileStructureService(Neo4jGraph graph, FileSectionContext fileSectionContext) : base(Constants.ERROR_FILE_STRUCTURE)
         {
             _fileStructureRepository = new FileStructureRepository(graph);
             _fileSectionRepository = new FileSectionRepository(graph);
@@ -39,14 +40,21 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> GetFileStructureItemsAsync(ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileStructureNode root = await GetFileStructureItem(userId, null, true);
+                FileStructureNode root = await GetFileStructureItem(userId, null, true);
 
-            List<FileStructureNode> fileStructures = await _fileStructureRepository.GetFileStructuresAsync(userId);
-            List<Tuple<Guid, Guid>> connections = await _fileStructureRepository.GetFileStructureConnectionsAsync(userId);
+                List<FileStructureNode> fileStructures = await _fileStructureRepository.GetFileStructuresAsync(userId);
+                List<Tuple<Guid, Guid>> connections = await _fileStructureRepository.GetFileStructureConnectionsAsync(userId);
 
-            return _buildTree(root.id, fileStructures, connections)?.Children ?? new List<FileStructureGetResponseDTO>();
+                return _buildTree(root.id, fileStructures, connections)?.Children ?? new List<FileStructureGetResponseDTO>();
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -57,12 +65,19 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> CreateFileStructureItemAsync(FileStructureCreateRequestDTO requestData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileStructureNode parent = await GetFileStructureItem(userId, requestData.ParentFolder);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileStructureNode parent = await GetFileStructureItem(userId, requestData.ParentFolder);
 
-            List<FileStructureNode> siblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(parent.id, userId);
-            await _fileStructureRepository.CreateFileStructureItemAsync(requestData.Label, requestData.Type, siblings.Count, parent.id, userId);
-            return await GetFileStructureItemsAsync(claims);
+                List<FileStructureNode> siblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(parent.id, userId);
+                await _fileStructureRepository.CreateFileStructureItemAsync(requestData.Label, requestData.Type, siblings.Count, parent.id, userId);
+                return await GetFileStructureItemsAsync(claims);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -73,11 +88,18 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> UpdateFileStructureItemDataAsync(FileStructureUpdateRequestDTO requestData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            await GetFileStructureItem(userId, requestData.Id);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                await GetFileStructureItem(userId, requestData.Id);
 
-            await _fileStructureRepository.UpdateFileStructureItemDataAsync(requestData.Id, requestData.Label, requestData.Type, userId);
-            return await GetFileStructureItemsAsync(claims);
+                await _fileStructureRepository.UpdateFileStructureItemDataAsync(requestData.Id, requestData.Label, requestData.Type, userId);
+                return await GetFileStructureItemsAsync(claims);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -89,32 +111,39 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> MoveFileStructureItemAsync(FileStructureMoveRequestDTO requestData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileStructureNode? root = await _fileStructureRepository.GetFileStructureItemAsync(userId);
-            FileStructureNode currentParent = await _fileStructureRepository.GetParentFolderAsync(requestData.Id, userId);
-            List<FileStructureNode> currentSiblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(currentParent.id, userId);
-
-            // moved in the same folder
-            if (requestData.ParentId == currentParent.id || requestData.ParentId == null && root?.id == currentParent.id)
+            try
             {
-                await ShiftFileStructureItemLeft(requestData.OldTreeId, requestData.NewTreeId, userId, currentParent, currentSiblings);
-                await ShiftFileStructureItemRight(requestData.OldTreeId, requestData.NewTreeId, userId, currentParent, currentSiblings);
-                await _fileStructureRepository.UpdateItemTreeIdAsync(requestData.Id, requestData.NewTreeId, userId);
-            }
-            // moved to other folder
-            else
-            {
-                await ShiftFileStructureItemLeft(requestData.OldTreeId, int.MaxValue, userId, currentParent, currentSiblings);
-                await ShiftFileStructureItemRight(requestData.OldTreeId, int.MaxValue, userId, currentParent, currentSiblings);
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileStructureNode? root = await _fileStructureRepository.GetFileStructureItemAsync(userId);
+                FileStructureNode currentParent = await _fileStructureRepository.GetParentFolderAsync(requestData.Id, userId);
+                List<FileStructureNode> currentSiblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(currentParent.id, userId);
 
-                FileStructureNode newParent = await GetFileStructureItem(userId, requestData.ParentId);
-                List<FileStructureNode> newSiblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(newParent.id, userId);
-                await ShiftFileStructureItemLeft(int.MaxValue, requestData.NewTreeId, userId, newParent, newSiblings);
-                await ShiftFileStructureItemRight(int.MaxValue, requestData.NewTreeId, userId, newParent, newSiblings);
-                await _fileStructureRepository.UpdateItemTreeIdAsync(requestData.Id, requestData.NewTreeId, userId);
-                await _fileStructureRepository.MoveFielStructureItemAsync(requestData.Id, newParent.id, userId);
+                // moved in the same folder
+                if (requestData.ParentId == currentParent.id || requestData.ParentId == null && root?.id == currentParent.id)
+                {
+                    await ShiftFileStructureItemLeft(requestData.OldTreeId, requestData.NewTreeId, userId, currentParent, currentSiblings);
+                    await ShiftFileStructureItemRight(requestData.OldTreeId, requestData.NewTreeId, userId, currentParent, currentSiblings);
+                    await _fileStructureRepository.UpdateItemTreeIdAsync(requestData.Id, requestData.NewTreeId, userId);
+                }
+                // moved to other folder
+                else
+                {
+                    await ShiftFileStructureItemLeft(requestData.OldTreeId, int.MaxValue, userId, currentParent, currentSiblings);
+                    await ShiftFileStructureItemRight(requestData.OldTreeId, int.MaxValue, userId, currentParent, currentSiblings);
+
+                    FileStructureNode newParent = await GetFileStructureItem(userId, requestData.ParentId);
+                    List<FileStructureNode> newSiblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(newParent.id, userId);
+                    await ShiftFileStructureItemLeft(int.MaxValue, requestData.NewTreeId, userId, newParent, newSiblings);
+                    await ShiftFileStructureItemRight(int.MaxValue, requestData.NewTreeId, userId, newParent, newSiblings);
+                    await _fileStructureRepository.UpdateItemTreeIdAsync(requestData.Id, requestData.NewTreeId, userId);
+                    await _fileStructureRepository.MoveFielStructureItemAsync(requestData.Id, newParent.id, userId);
+                }
+                return await GetFileStructureItemsAsync(claims);
             }
-            return await GetFileStructureItemsAsync(claims);
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -125,20 +154,27 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task<List<FileStructureGetResponseDTO>> DeleteFileStructureItemAsync(Guid id, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileStructureNode item = await GetFileStructureItem(userId, id);
-            FileStructureNode parent = await _fileStructureRepository.GetParentFolderAsync(id, userId);
-            List<FileStructureNode> siblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(parent.id, userId);
-            await ShiftFileStructureItemLeft(item.treeId, int.MaxValue, userId, parent, siblings);
+                FileStructureNode item = await GetFileStructureItem(userId, id);
+                FileStructureNode parent = await _fileStructureRepository.GetParentFolderAsync(id, userId);
+                List<FileStructureNode> siblings = await _fileStructureRepository.GetChildFileStructureItemsAsync(parent.id, userId);
+                await ShiftFileStructureItemLeft(item.treeId, int.MaxValue, userId, parent, siblings);
 
-            List<Guid> structureIds = await _fileSectionRepository.GetByFolderIdAsync(id, userId);
-            await _listSectionRepository.DeleteByIdListAsync(structureIds);
-            await _checklistSectionRepository.DeleteByIdListAsync(structureIds);
-            await _textSectionRepository.DeleteByIdListAsync(structureIds);
-            await _fileStructureRepository.DeleteFileStructureItemAsync(id, userId);
+                List<Guid> structureIds = await _fileSectionRepository.GetByFolderIdAsync(id, userId);
+                await _listSectionRepository.DeleteByIdListAsync(structureIds);
+                await _checklistSectionRepository.DeleteByIdListAsync(structureIds);
+                await _textSectionRepository.DeleteByIdListAsync(structureIds);
+                await _fileStructureRepository.DeleteFileStructureItemAsync(id, userId);
 
-            return await GetFileStructureItemsAsync(claims);
+                return await GetFileStructureItemsAsync(claims);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_DELETE_FAILED);
+            }
         }
 
         /// <summary>
@@ -191,9 +227,16 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task ShiftFileStructureItemLeft(int oldTreeId, int newTreeId, Guid userId, FileStructureNode parent, List<FileStructureNode> siblings)
         {
-            foreach (var sibling in siblings.Where(s => s.treeId > oldTreeId && s.treeId <= newTreeId))
+            try
             {
-                await _fileStructureRepository.UpdateItemTreeIdAsync(sibling.id, sibling.treeId - 1, userId);
+                foreach (var sibling in siblings.Where(s => s.treeId > oldTreeId && s.treeId <= newTreeId))
+                {
+                    await _fileStructureRepository.UpdateItemTreeIdAsync(sibling.id, sibling.treeId - 1, userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
             }
         }
 
@@ -208,9 +251,16 @@ namespace SecondBrain.Services.FileStructure
         /// <returns></returns>
         public async Task ShiftFileStructureItemRight(int oldTreeId, int newTreeId, Guid userId, FileStructureNode parent, List<FileStructureNode> siblings)
         {
-            foreach (var sibling in siblings.Where(s => s.treeId < oldTreeId && s.treeId >= newTreeId))
+            try
             {
-                await _fileStructureRepository.UpdateItemTreeIdAsync(sibling.id, sibling.treeId + 1, userId);
+                foreach (var sibling in siblings.Where(s => s.treeId < oldTreeId && s.treeId >= newTreeId))
+                {
+                    await _fileStructureRepository.UpdateItemTreeIdAsync(sibling.id, sibling.treeId + 1, userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
             }
         }
 
@@ -225,24 +275,38 @@ namespace SecondBrain.Services.FileStructure
         /// <exception cref="Exception"></exception>
         public async Task<FileStructureNode> GetFileStructureItem(Guid userId, Guid? itemId = null, bool createRootIfNotFound = false)
         {
-            FileStructureNode? item = await _fileStructureRepository.GetFileStructureItemAsync(userId, itemId);
-            if (item == null)
+            try
             {
-                if (createRootIfNotFound)
+                FileStructureNode? item = await _fileStructureRepository.GetFileStructureItemAsync(userId, itemId);
+                if (item == null)
                 {
-                    item = await _fileStructureRepository.CreateFileStructureRootAsync("root", EFileType.FOLDER, 0, userId);
+                    if (createRootIfNotFound)
+                    {
+                        item = await _fileStructureRepository.CreateFileStructureRootAsync("root", EFileType.FOLDER, 0, userId);
+                    }
+                    else
+                    {
+                        throw new Exception("Error: File structure item not found.");
+                    }
                 }
-                else
-                {
-                    throw new Exception("Error: File structure item not found.");
-                }
+                return item;
             }
-            return item;
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         public async Task<int> GetChildCountAsync(Guid itemId, Guid userId)
         {
-            return await _fileStructureRepository.GetChildCountAsync(itemId, userId);
+            try
+            {
+                return await _fileStructureRepository.GetChildCountAsync(itemId, userId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
     }
 }

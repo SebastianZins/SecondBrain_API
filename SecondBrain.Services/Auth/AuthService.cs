@@ -1,8 +1,6 @@
-﻿
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using SecondBrain.Core;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.Auth;
@@ -17,12 +15,12 @@ using System.Text;
 
 namespace SecondBrain.Services.Auth
 {
-    public class AuthService
+    public class AuthService : Service
     {
         private JwtSettings settings;
         private readonly UserRepository _userRepository;
 
-        public AuthService(IOptions<JwtSettings> settings, Neo4jGraph graph)
+        public AuthService(IOptions<JwtSettings> settings, Neo4jGraph graph) : base(Constants.ERROR_AUTH)
         {
             _userRepository = new UserRepository(graph);
             this.settings = settings.Value;
@@ -36,23 +34,30 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task<bool> LoginAsync(LoginRequestDTO request)
         {
-            UserNode user;
             try
             {
-                user = await _userRepository.GetByMailAsync(request.Email);
+                UserNode user;
+                try
+                {
+                    user = await _userRepository.GetByMailAsync(request.Email);
+                }
+                catch (Exception e)
+                {
+                    return false;
+                }
+
+
+                if (!PasswordCryptHelper.VerifyHashString(user.password, user.passwordSalt, request.Password))
+                {
+                    return false;
+                }
+
+                return true;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return false;
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOGIN_FAILED);
             }
-
-
-            if (!PasswordCryptHelper.VerifyHashString(user.password, user.passwordSalt, request.Password))
-            {
-                return false;
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -72,7 +77,14 @@ namespace SecondBrain.Services.Auth
                 (string, string) generatedPW = PasswordCryptHelper.GenerateHashString(request.password);
                 node.password = generatedPW.Item1;
                 node.passwordSalt = generatedPW.Item2;
-                await _userRepository.CreateAsync(node);
+                try
+                {
+                    await _userRepository.CreateAsync(node);
+                }
+                catch (Exception ex)
+                {
+                    throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+                }
 
                 return true;
             }
@@ -89,29 +101,35 @@ namespace SecondBrain.Services.Auth
         /// <exception cref="Exception"></exception>
         public async Task<RefreshTokenRequestDTO> RefreshTokenAsync(string token, string refreshToken)
         {
-            ClaimsPrincipal principal = GetPrincipalFromExpiredToken(token);
-            Guid id = ClaimsPrincipalHelper.GetCurrentUserId(principal);
-            UserNode user = await _userRepository.GetByIdAsync(id);
-
-            if (user == null || user.refreshToken != refreshToken)
+            try
             {
-                Console.WriteLine("Error: Could not validate refresh token");
-                throw new Exception("Error: Could not validate refresh token");
+                ClaimsPrincipal principal = GetPrincipalFromExpiredToken(token);
+                Guid id = ClaimsPrincipalHelper.GetCurrentUserId(principal);
+                UserNode user = await _userRepository.GetByIdAsync(id);
+
+                if (user == null || user.refreshToken != refreshToken)
+                {
+                    Console.WriteLine("Error: Could not validate refresh token");
+                    throw new Exception("Error: Could not validate refresh token");
+                }
+
+                string newToken = GenerateAccessToken(principal.Claims);
+                string newRefreshToken = GenerateRefreshToken();
+
+                user.refreshToken = newRefreshToken;
+
+                await _userRepository.UpdateAsync(user);
+
+                return new RefreshTokenRequestDTO()
+                {
+                    token = newToken,
+                    refreshToken = newRefreshToken
+                };
             }
-
-            string newToken = GenerateAccessToken(principal.Claims);
-            string newRefreshToken = GenerateRefreshToken();
-
-            user.refreshToken = newRefreshToken;
-
-            await _userRepository.UpdateAsync(user);
-
-            return new RefreshTokenRequestDTO()
+            catch (Exception ex)
             {
-                token = newToken,
-                refreshToken = newRefreshToken
-            };
-
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CHECK_FAILED);
+            }
         }
 
         /// <summary>
@@ -122,18 +140,25 @@ namespace SecondBrain.Services.Auth
         /// <exception cref="Exception"></exception>
         public async Task RevokeTokenAsync(ClaimsPrincipal principal)
         {
-            Guid id = ClaimsPrincipalHelper.GetCurrentUserId(principal);
-            UserNode user = await _userRepository.GetByIdAsync(id);
-
-            if (user == null)
+            try
             {
-                Console.WriteLine("Error: Could not revoke token");
-                throw new Exception("Error: Could not revoke token");
+                Guid id = ClaimsPrincipalHelper.GetCurrentUserId(principal);
+                UserNode user = await _userRepository.GetByIdAsync(id);
+
+                if (user == null)
+                {
+                    Console.WriteLine("Error: Could not revoke token");
+                    throw new Exception("Error: Could not revoke token");
+                }
+
+                user.refreshToken = null;
+
+                await _userRepository.UpdateAsync(user);
             }
-
-            user.refreshToken = null;
-
-            await _userRepository.UpdateAsync(user);
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>

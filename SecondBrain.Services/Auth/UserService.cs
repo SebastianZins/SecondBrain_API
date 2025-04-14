@@ -1,4 +1,5 @@
-﻿using SecondBrain.Database.Neo4j;
+﻿using SecondBrain.Core;
+using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.User;
 using SecondBrain.Repositories.Neo4j;
@@ -7,11 +8,11 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.Auth
 {
-    public class UserService
+    public class UserService : Service
     {
         private readonly UserRepository _userRepository;
 
-        public UserService(Neo4jGraph graph)
+        public UserService(Neo4jGraph graph) : base(Constants.ERROR_USER)
         {
             _userRepository = new UserRepository(graph);
         }
@@ -23,9 +24,16 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task<UserResponseDTO> GetCurrentUserAsync(ClaimsPrincipal claims)
         {
-            Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            UserNode user = await _userRepository.GetByIdAsync(currentUserId);
-            return new UserResponseDTO(user);
+            try
+            {
+                Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                UserNode user = await _userRepository.GetByIdAsync(currentUserId);
+                return new UserResponseDTO(user);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -35,8 +43,15 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task<UserResponseDTO> GetByIdAsync(Guid id)
         {
-            UserNode user = await _userRepository.GetByIdAsync(id);
-            return new UserResponseDTO(user);
+            try
+            {
+                UserNode user = await _userRepository.GetByIdAsync(id);
+                return new UserResponseDTO(user);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -46,7 +61,14 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task<UserNode> GetUserNodeMailAsync(string mail)
         {
-            return await _userRepository.GetByMailAsync(mail);
+            try
+            {
+                return await _userRepository.GetByMailAsync(mail);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -63,9 +85,16 @@ namespace SecondBrain.Services.Auth
             }
             catch
             {
-                UserNode node = user.ToModel();
-                await _userRepository.CreateAsync(node);
-                return true;
+                try
+                {
+                    UserNode node = user.ToModel();
+                    await _userRepository.CreateAsync(node);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+                }
             }
         }
 
@@ -77,15 +106,22 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task<bool> UpdateAsync(UserUpdateRequestDTO user, ClaimsPrincipal claims)
         {
-            Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            if (currentUserId != user.Id)
+            try
             {
+                Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                if (currentUserId != user.Id)
+                {
+                    return false;
+                }
+
+                UserNode node = await _userRepository.GetByIdAsync(currentUserId);
+                await _userRepository.UpdateAsync(user.WriteToModel(node));
                 return false;
             }
-
-            UserNode node = await _userRepository.GetByIdAsync(currentUserId);
-            await _userRepository.UpdateAsync(user.WriteToModel(node));
-            return false;
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -95,8 +131,15 @@ namespace SecondBrain.Services.Auth
         /// <returns></returns>
         public async Task DeleteCurrentUserAsync(ClaimsPrincipal claims)
         {
-            Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            await _userRepository.DeleteAsync(currentUserId);
+            try
+            {
+                Guid currentUserId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                await _userRepository.DeleteAsync(currentUserId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_DELETE_FAILED);
+            }
         }
     }
 }

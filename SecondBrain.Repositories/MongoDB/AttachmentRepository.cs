@@ -6,19 +6,11 @@ namespace SecondBrain.Repositories.MongoDB
 {
     public class AttachmentRepository : MongoDBRepository<AttachmentsModel>
     {
-        public AttachmentRepository(AttachmentsContext context) : base(context.Attachments){}
+        public AttachmentRepository(AttachmentsContext context) : base(context.Attachments) { }
 
         public async Task<IEnumerable<AttachmentsModel>> GetAll()
         {
-            try
-            {
-                return await _collection.Find(_ => true).ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                // log or manage the exception
-                throw ex;
-            }
+            return await _collection.Find(_ => true).ToListAsync();
         }
 
         //public async Task<AttachmentsModel> Get(Guid id)

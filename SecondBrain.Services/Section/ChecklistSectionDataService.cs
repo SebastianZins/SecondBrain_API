@@ -1,4 +1,5 @@
-﻿using SecondBrain.Database.MongoDB;
+﻿using SecondBrain.Core;
+using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.File;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
@@ -19,6 +20,7 @@ namespace SecondBrain.Services.Section
         private readonly FileSectionRepository _metaDataRepo;
         private readonly FileService _fileService;
 
+        private readonly string SUB_LOCAL_KEY;
 
         public ChecklistSectionDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base(graph)
         {
@@ -27,6 +29,8 @@ namespace SecondBrain.Services.Section
             _dataRepo.CreateIndexAsync().Wait();
 
             _fileService = fileService;
+
+            SUB_LOCAL_KEY = LOCAL_KEY + "." + SUB_LOCAL_KEY;
         }
 
         /// <summary>
@@ -37,12 +41,19 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<ChecklistSectionResponseDTO> GetSectionByIdAsync(Guid sectionId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileSectionNode metaData = await _metaDataRepo.GetByIdAsync(sectionId, userId);
-            ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                FileSectionNode metaData = await _metaDataRepo.GetByIdAsync(sectionId, userId);
+                ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
 
-            return new ChecklistSectionResponseDTO(metaData, data);
+                return new ChecklistSectionResponseDTO(metaData, data);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -53,19 +64,26 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<List<ChecklistSectionResponseDTO>> GetBySectionFileIdAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-
-            List<FileSectionNode> metaDatas = await _metaDataRepo.GetByFileIdAsync(fileId, userId);
-
-            List<ChecklistSectionResponseDTO> responses = new List<ChecklistSectionResponseDTO>();
-
-            foreach (var metaData in metaDatas)
+            try
             {
-                ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
-                responses.Add(new ChecklistSectionResponseDTO(metaData, data));
-            }
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            return responses;
+                List<FileSectionNode> metaDatas = await _metaDataRepo.GetByFileIdAsync(fileId, userId);
+
+                List<ChecklistSectionResponseDTO> responses = new List<ChecklistSectionResponseDTO>();
+
+                foreach (var metaData in metaDatas)
+                {
+                    ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                    responses.Add(new ChecklistSectionResponseDTO(metaData, data));
+                }
+
+                return responses;
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -76,15 +94,22 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<FileSectionResponseDTO> CreateSectionAsync(FileSectionCreateRequestDTO newMetaData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileSectionNode metaData = await _metaDataRepo.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
-            ChecklistSectionModel data = new ChecklistSectionModel() { structureId = metaData.id };
-            await _dataRepo.CreateAsync(data);
+                FileSectionNode metaData = await _metaDataRepo.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
+                ChecklistSectionModel data = new ChecklistSectionModel() { structureId = metaData.id };
+                await _dataRepo.CreateAsync(data);
 
-            await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
+                await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
 
-            return new ChecklistSectionResponseDTO(metaData, data);
+                return new ChecklistSectionResponseDTO(metaData, data);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -95,13 +120,20 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task UpdateDataAsync(ChecklistSectionUpdateRequestDTO data, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
 
-            await UpdateTagsAsync(data.Id, data.Tags, userId);
+                await UpdateTagsAsync(data.Id, data.Tags, userId);
 
-            List<ChecklistItemModel> listItems = data.Items.Select(i => i.ToModel()).ToList();
-            await _dataRepo.UpdateAsync(data.Id, listItems);
+                List<ChecklistItemModel> listItems = data.Items.Select(i => i.ToModel()).ToList();
+                await _dataRepo.UpdateAsync(data.Id, listItems);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
     }
 }

@@ -11,92 +11,44 @@ namespace SecondBrain.Repositories.MongoDB
 
         public async Task<List<ListSectionModel>> GetAllAsync()
         {
-            try
-            {
-                return await _collection.Find(_ => true).ToListAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Loading list section data failed", e);
-            }
+            return await _collection.Find(_ => true).ToListAsync();
         }
 
         public async Task<ListSectionModel> GetByStructureIdAsync(Guid id)
         {
-            try
-            {
-                return await _collection
-                                .Find(section => section.structureId == id)
-                                .FirstOrDefaultAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Loading list section data failed", e);
-            }
+            return await _collection
+                            .Find(section => section.structureId == id)
+                            .FirstOrDefaultAsync();
         }
 
         public async Task<List<ListSectionModel>> GetByStructureIdsAsync(List<Guid> ids)
         {
-            try
-            {
-                return await _collection
-                                .Find(section => ids.Contains(section.structureId))
-                                .ToListAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Loading list section data failed", e);
-            }
+            return await _collection
+                            .Find(section => ids.Contains(section.structureId))
+                            .ToListAsync();
         }
 
         public async Task CreateAsync(ListSectionModel item)
         {
-            try
-            {
-                await _collection.InsertOneAsync(item);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Creating list section data failed", e);
-            }
+            await _collection.InsertOneAsync(item);
         }
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            try
-            {
-                DeleteResult actionResult = await _collection.DeleteOneAsync(
-                     Builders<ListSectionModel>.Filter.Eq("structureId", id));
+            DeleteResult actionResult = await _collection.DeleteOneAsync(
+                 Builders<ListSectionModel>.Filter.Eq("structureId", id));
 
-                return actionResult.IsAcknowledged
-                    && actionResult.DeletedCount > 0;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Deleting list section data failed", e);
-            }
+            return actionResult.IsAcknowledged
+                && actionResult.DeletedCount > 0;
         }
 
         public async Task<bool> DeleteByIdListAsync(List<Guid> ids)
         {
-            try
-            {
-                DeleteResult actionResult = await _collection.DeleteOneAsync(
-                     Builders<ListSectionModel>.Filter.In("structureId", ids));
+            DeleteResult actionResult = await _collection.DeleteOneAsync(
+                 Builders<ListSectionModel>.Filter.In("structureId", ids));
 
-                return actionResult.IsAcknowledged
-                    && actionResult.DeletedCount > 0;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Deleting list sections data failed", e);
-            }
+            return actionResult.IsAcknowledged
+                && actionResult.DeletedCount > 0;
         }
 
         public async Task<bool> UpdateAsync(Guid id, List<string> items)
@@ -104,17 +56,9 @@ namespace SecondBrain.Repositories.MongoDB
             var filter = Builders<ListSectionModel>.Filter.Eq(s => s.structureId, id);
             var update = Builders<ListSectionModel>.Update.Set(s => s.items, items);
 
-            try
-            {
-                UpdateResult actionResult = await _collection.UpdateOneAsync(filter, update);
-                return actionResult.IsAcknowledged
-                    && actionResult.ModifiedCount > 0;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Updating list section data failed", e);
-            }
+            UpdateResult actionResult = await _collection.UpdateOneAsync(filter, update);
+            return actionResult.IsAcknowledged
+                && actionResult.ModifiedCount > 0;
         }
     }
 }

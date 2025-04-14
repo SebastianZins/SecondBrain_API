@@ -16,20 +16,12 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<UserNode> GetByIdAsync(Guid id)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)")
-                    .Where((UserNode user) => user.id == id)
-                    .Return(user => user.As<UserNode>());
+            var query = _graph.Cypher
+                          .Match("(user:User)")
+                          .Where((UserNode user) => user.id == id)
+                          .Return(user => user.As<UserNode>());
 
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error", "Loading user by id failed");
-            }
+            return (await query.ResultsAsync).Single();
         }
 
         /// <summary>
@@ -40,20 +32,12 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<UserNode> GetByMailAsync(string mail)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)")
-                    .Where((UserNode user) => user.email == mail)
-                    .Return(user => user.As<UserNode>());
+            var query = _graph.Cypher
+                       .Match("(user:User)")
+                       .Where((UserNode user) => user.email == mail)
+                       .Return(user => user.As<UserNode>());
 
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error", "Loading user by mail failed");
-            }
+            return (await query.ResultsAsync).Single();
         }
 
         /// <summary>
@@ -64,20 +48,12 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task UpdateAsync(UserNode user)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User{id: $id})")
-                    .Set("user = $user")
-                    .WithParams(new { id = user.id, user });
+            var query = _graph.Cypher
+                               .Match("(user:User{id: $id})")
+                               .Set("user = $user")
+                               .WithParams(new { id = user.id, user });
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error", "Update user data failed");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
 
         /// <summary>
@@ -88,21 +64,13 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task CreateAsync(UserNode user)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Merge("(user:User{id : $id})")
-                    .OnCreate()
-                    .Set("user = $user")
-                    .WithParams(new { user, user.id });
+            var query = _graph.Cypher
+                                .Merge("(user:User{id : $id})")
+                                .OnCreate()
+                                .Set("user = $user")
+                                .WithParams(new { user, user.id });
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error", "Create user data failed");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
 
         /// <summary>
@@ -113,20 +81,12 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task DeleteAsync(Guid id)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)")
-                    .Where((UserNode user) => user.id == id)
-                    .DetachDelete("user");
+            var query = _graph.Cypher
+                               .Match("(user:User)")
+                               .Where((UserNode user) => user.id == id)
+                               .DetachDelete("user");
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error", "Deleting user failed");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
     }
 }
