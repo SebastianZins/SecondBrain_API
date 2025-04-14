@@ -24,6 +24,7 @@ namespace SecondBrain.Services.Section
         private readonly FileService _fileService;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly ChecklistSectionRepository _checklistSectionRepository;
         private readonly TextSectionRepository _textSectionRepository;
 
 
@@ -32,6 +33,7 @@ namespace SecondBrain.Services.Section
             _fileService = fileService;
             _fileSectionRepository = new FileSectionRepository(graph);
             _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _checklistSectionRepository = new ChecklistSectionRepository(fileSectionContext);
             _textSectionRepository = new TextSectionRepository(fileSectionContext);
         }
 
@@ -94,6 +96,7 @@ namespace SecondBrain.Services.Section
             switch (section.sectionType)
             {
                 case ESectionType.TEXT:
+                    await _textSectionRepository.DeleteAsync(id);
                     break;
                 case ESectionType.MARKDOWN:
                     break;
@@ -101,6 +104,7 @@ namespace SecondBrain.Services.Section
                     await _listSectionRepository.DeleteAsync(id);
                     break;
                 case ESectionType.CHECK_LIST:
+                    await _checklistSectionRepository.DeleteAsync(id);
                     break;
                 case ESectionType.TABLE:
                     break;
@@ -148,6 +152,7 @@ namespace SecondBrain.Services.Section
                     break;
                 case ESectionType.CHECK_LIST:
                     ChecklistSectionModel checklistData = new ChecklistSectionModel() { structureId = metaData.id };
+                    await _checklistSectionRepository.CreateAsync(checklistData);
                     response = new ChecklistSectionResponseDTO(metaData, checklistData);
                     break;
                 case ESectionType.TABLE:

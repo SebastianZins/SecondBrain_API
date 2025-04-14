@@ -1,8 +1,10 @@
 ﻿using SecondBrain.Core.Enums;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
+using SecondBrain.Models.DatabaseModels.MongoDB.File;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 using SecondBrain.Models.DatabaseModels.Neo4j;
+using SecondBrain.Models.DTOs.FileSection.ChecklistSection;
 using SecondBrain.Models.DTOs.FileSection.ListSelection;
 using SecondBrain.Models.DTOs.FileSection.TextSection;
 using SecondBrain.Models.DTOs.FileStructure;
@@ -18,6 +20,7 @@ namespace SecondBrain.Services.FileStructure
     {
         private readonly FileRepository _fileRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly ChecklistSectionRepository _checklistSectionRepository;
         private readonly TextSectionRepository _textSectionRepository;
         private readonly FileStructureService _fileStructureService;
         private readonly FileSectionRepository _fileSectionRepository;
@@ -26,11 +29,14 @@ namespace SecondBrain.Services.FileStructure
         {
             _fileRepository = new FileRepository(graph);
             _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _checklistSectionRepository = new ChecklistSectionRepository(fileSectionContext);
             _textSectionRepository = new TextSectionRepository(fileSectionContext);
             _fileSectionRepository = new FileSectionRepository(graph);
             _fileStructureService = fileStructureService;
 
             _listSectionRepository.CreateIndexAsync().Wait();
+            _checklistSectionRepository.CreateIndexAsync().Wait();
+            _textSectionRepository.CreateIndexAsync().Wait();
         }
 
         /// <summary>
@@ -75,9 +81,9 @@ namespace SecondBrain.Services.FileStructure
             List<ListSectionModel> listSectionModels = await _listSectionRepository.GetByStructureIdsAsync(listSectionMetaData.Select(s => s.id).ToList());
             response.ListSections = listSectionModels.Select((model, i) => new ListSectionResponseDTO(listSectionMetaData[i], model)).ToList();
             //// checkList sections
-            //List<FileSectionNode> checkListSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
-            //List<ChecklistSectionModel> checkListSectionModels = await _checkListSectionRepository.GetByStructureIdsAsync(checkListSectionMetaData.Select(s => s.id).ToList());
-            //response.CheckListSections = checkListSectionModels.Select((model, i) => new ChecklistSectionResponseDTO(checkListSectionMetaData[i], model)).ToList();
+            List<FileSectionNode> checkListSectionMetaData = sections.Where(s => s.sectionType == ESectionType.CHECK_LIST).ToList();
+            List<ChecklistSectionModel> checkListSectionModels = await _checklistSectionRepository.GetByStructureIdsAsync(checkListSectionMetaData.Select(s => s.id).ToList());
+            response.CheckListSections = checkListSectionModels.Select((model, i) => new ChecklistSectionResponseDTO(checkListSectionMetaData[i], model)).ToList();
             //// table sections
             //List<FileSectionNode> tableSectionMetaData = sections.Where(s => s.sectionType == ESectionType.TABLE).ToList();
             //List<TableSectionModel> tableSectionModels = await _tableSectionRepository.GetByStructureIdsAsync(tableSectionMetaData.Select(s => s.id).ToList());

@@ -15,6 +15,7 @@ namespace SecondBrain.Services.FileStructure
         private readonly FileStructureRepository _fileStructureRepository;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly ChecklistSectionRepository _checklistSectionRepository;
         private readonly TextSectionRepository _textSectionRepository;
 
 
@@ -23,9 +24,11 @@ namespace SecondBrain.Services.FileStructure
             _fileStructureRepository = new FileStructureRepository(graph);
             _fileSectionRepository = new FileSectionRepository(graph);
             _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _checklistSectionRepository = new ChecklistSectionRepository(fileSectionContext);
             _textSectionRepository = new TextSectionRepository(fileSectionContext);
 
             _listSectionRepository.CreateIndexAsync().Wait();
+            _checklistSectionRepository.CreateIndexAsync().Wait();
             _textSectionRepository.CreateIndexAsync().Wait();
         }
 
@@ -130,7 +133,8 @@ namespace SecondBrain.Services.FileStructure
             await ShiftFileStructureItemLeft(item.treeId, int.MaxValue, userId, parent, siblings);
 
             List<Guid> structureIds = await _fileSectionRepository.GetByFolderIdAsync(id, userId);
-            await _listSectionRepository.DeleteByIdListAsync(structureIds); ;
+            await _listSectionRepository.DeleteByIdListAsync(structureIds);
+            await _checklistSectionRepository.DeleteByIdListAsync(structureIds);
             await _textSectionRepository.DeleteByIdListAsync(structureIds);
             await _fileStructureRepository.DeleteFileStructureItemAsync(id, userId);
 
