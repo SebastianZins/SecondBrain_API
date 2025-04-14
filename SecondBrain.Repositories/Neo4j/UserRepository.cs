@@ -1,18 +1,12 @@
 ﻿using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class UserRepository
+    public class UserRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public UserRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public UserRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get User by id
@@ -100,7 +94,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .Merge("(user:User{id : $id})")
                     .OnCreate()
                     .Set("user = $user")
-                    .WithParams(new {user, user.id});
+                    .WithParams(new { user, user.id });
 
                 await query.ExecuteWithoutResultsAsync();
             }

@@ -1,20 +1,13 @@
 ﻿using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Core.Enums;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
-using System.Reflection.Emit;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class FileStructureRepository
+    public class FileStructureRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public FileStructureRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public FileStructureRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get file structure item or root if no id provided
@@ -290,7 +283,7 @@ namespace SecondBrain.Repositories.Neo4j
                 throw new Neo4jException("Error:", "Updating filte structure item data failed.");
             }
         }
-        
+
         /// <summary>
         /// Delete a folder and all child folder and attached files of it and its children
         /// </summary>

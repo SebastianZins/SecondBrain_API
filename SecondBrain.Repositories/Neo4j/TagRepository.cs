@@ -1,20 +1,13 @@
 ﻿using MongoDB.Driver;
 using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
-using static System.Collections.Specialized.BitVector32;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class TagRepository
+    public class TagRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public TagRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public TagRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get tags of file section

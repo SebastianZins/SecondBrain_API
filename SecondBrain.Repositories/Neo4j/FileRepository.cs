@@ -1,18 +1,12 @@
 ﻿using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class FileRepository
+    public class FileRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public FileRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public FileRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get File info by id
@@ -117,7 +111,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .Merge("(file)<-[:ParentFolderOf]-(item)")
                     .Merge("(file)-[:CreatedBy {created:$now}]->(user)")
                     .Merge("(file)-[:UpdatedBy {updated:$now}]->(user)")
-                    .WithParams(new {now, data, data.id})
+                    .WithParams(new { now, data, data.id })
                     .ReturnDistinct(file => file.As<FileNode>());
 
                 return (await query.ResultsAsync).Single();

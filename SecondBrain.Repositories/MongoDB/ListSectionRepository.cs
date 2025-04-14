@@ -1,18 +1,13 @@
-﻿using MongoDB.Bson;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 
 namespace SecondBrain.Repositories.MongoDB
 {
-    public class ListSectionRepository
+    public class ListSectionRepository : MongoDBRepository<ListSectionModel>
     {
-        private readonly IMongoCollection<ListSectionModel> _collection;
 
-        public ListSectionRepository(FileSectionContext context)
-        {
-            _collection = context.List;
-        }
+        public ListSectionRepository(FileSectionContext context) : base(context.List) { }
 
         public async Task<List<ListSectionModel>> GetAllAsync()
         {
@@ -119,23 +114,6 @@ namespace SecondBrain.Repositories.MongoDB
             {
                 Console.WriteLine("Error:", e.Message);
                 throw new MongoException("Error: Updating list section data failed", e);
-            }
-        }
-
-        public async Task<string> CreateIndexAsync()
-        {
-            try
-            {
-                IndexKeysDefinition<ListSectionModel> keys = Builders<ListSectionModel>
-                                                                .IndexKeys
-                                                                .Ascending(item => item.structureId);
-
-                return await _collection.Indexes.CreateOneAsync(new CreateIndexModel<ListSectionModel>(keys));
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new MongoException("Error: Creating index failed", e);
             }
         }
     }

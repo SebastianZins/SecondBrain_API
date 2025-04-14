@@ -1,19 +1,12 @@
 ﻿using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
-using static System.Collections.Specialized.BitVector32;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class FileSectionRepository
+    public class FileSectionRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public FileSectionRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public FileSectionRepository(Neo4jGraph graph) : base(graph) { }
 
         public async Task<List<FileSectionNode>> GetAllSectionsByFolder(Guid folderId, Guid userId)
         {

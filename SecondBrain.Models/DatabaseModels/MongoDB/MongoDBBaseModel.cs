@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SecondBrain.Models.DatabaseModels.MongoDB
 {
-    public class MongoDBBaseModel
+    public class MongoDBBaseModel : IMongoDBBaseModel
     {
         [BsonId]
         public ObjectId _id { get; set; }
