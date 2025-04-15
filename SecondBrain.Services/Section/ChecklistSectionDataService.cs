@@ -127,8 +127,19 @@ namespace SecondBrain.Services.Section
 
                 await UpdateTagsAsync(data.Id, data.Tags, userId);
 
-                List<ChecklistItemModel> listItems = data.Items.Select(i => i.ToModel()).ToList();
-                await _dataRepo.UpdateAsync(data.Id, listItems);
+                List<ChecklistItemModel> changes = data.Items.Select(i => i.ToModel()).ToList();
+                List<ChecklistItemModel> current = (await _dataRepo.GetByStructureIdAsync(data.Id)).items;
+
+                foreach (var changeItem in changes)
+                {
+                    ChecklistItemModel? found = current.Find(currentItem => currentItem.id == changeItem.id && currentItem.isChecked);
+                    if (changeItem.isChecked && found != null)
+                    {
+                            changeItem.checkedDate = found.checkedDate;
+                    }
+                }
+
+                await _dataRepo.UpdateAsync(data.Id, changes);
             }
             catch (Exception ex)
             {

@@ -5,6 +5,9 @@ namespace SecondBrain.Models.DTOs.FileSection.ChecklistSection
 {
     public class ChecklistItemDTO
     {
+        [JsonProperty("id")]
+        public Guid? Id { get; set; } = null;
+
         [JsonProperty("text")]
         public string Text { get; set; } = string.Empty;
 
@@ -13,6 +16,7 @@ namespace SecondBrain.Models.DTOs.FileSection.ChecklistSection
 
         [JsonProperty("checkedDate")]
         public long? CheckedDate { get; set; } = null;
+        public ChecklistItemDTO() { }
 
         public ChecklistItemDTO(ChecklistItemModel node)
         {
@@ -25,9 +29,10 @@ namespace SecondBrain.Models.DTOs.FileSection.ChecklistSection
         {
             return new ChecklistItemModel()
             {
+                id = Id != null ? (Guid)(Id) : Guid.NewGuid(),
                 text = Text,
                 isChecked = IsChecked,
-                checkedDate = CheckedDate == null ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : (long)(CheckedDate),
+                checkedDate = CheckedDate,
             };
         }
     }
