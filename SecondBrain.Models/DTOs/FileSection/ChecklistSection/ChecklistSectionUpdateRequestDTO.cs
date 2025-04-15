@@ -2,12 +2,9 @@
 
 namespace SecondBrain.Models.DTOs.FileSection.ChecklistSection
 {
-    public class ChecklistSectionUpdateRequestDTO
+    public class ChecklistSectionUpdateRequestDTO : FileSectionDataUpdateRequestDTO
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; } = Guid.Empty;
-
         [JsonProperty("items")]
-        public List<ChecklistItemResponseDTO> Items { get; set; } = new List<ChecklistItemResponseDTO>();
+        public List<ChecklistItemDTO> Items { get; set; } = new List<ChecklistItemDTO>();
     }
 }

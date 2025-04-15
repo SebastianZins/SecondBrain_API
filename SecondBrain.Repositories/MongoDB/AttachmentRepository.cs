@@ -1,30 +1,16 @@
-﻿using MongoDB.Bson;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Models.DatabaseModels.MongoDB.Attachment;
 
 namespace SecondBrain.Repositories.MongoDB
 {
-    public class AttachmentRepository
+    public class AttachmentRepository : MongoDBRepository<AttachmentsModel>
     {
-        private readonly AttachmentsContext _context;
-
-        public AttachmentRepository(AttachmentsContext context)
-        {
-            _context = context;
-        }
+        public AttachmentRepository(AttachmentsContext context) : base(context.Attachments) { }
 
         public async Task<IEnumerable<AttachmentsModel>> GetAll()
         {
-            try
-            {
-                return await _context.Attachments.Find(_ => true).ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                // log or manage the exception
-                throw ex;
-            }
+            return await _collection.Find(_ => true).ToListAsync();
         }
 
         //public async Task<AttachmentsModel> Get(Guid id)

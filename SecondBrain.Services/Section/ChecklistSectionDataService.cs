@@ -1,10 +1,11 @@
 ﻿using SecondBrain.Core;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
+using SecondBrain.Models.DatabaseModels.MongoDB.File;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 using SecondBrain.Models.DatabaseModels.Neo4j;
 using SecondBrain.Models.DTOs.FileSection;
-using SecondBrain.Models.DTOs.FileSection.ListSelection;
+using SecondBrain.Models.DTOs.FileSection.ChecklistSection;
 using SecondBrain.Repositories.MongoDB;
 using SecondBrain.Repositories.Neo4j;
 using SecondBrain.Services.FileStructure;
@@ -13,24 +14,23 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.Section
 {
-    public class ListSectionDataService : FileSectionDataService
+    public class ChecklistSectionDataService : FileSectionDataService
     {
-        private readonly ListSectionRepository _dataRepo;
+        private readonly ChecklistSectionRepository _dataRepo;
         private readonly FileSectionRepository _metaDataRepo;
         private readonly FileService _fileService;
 
         private readonly string SUB_LOCAL_KEY;
 
-
-        public ListSectionDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base (graph)
+        public ChecklistSectionDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base(graph)
         {
             _metaDataRepo = new FileSectionRepository(graph);
-            _dataRepo = new ListSectionRepository(fileSectionContext);
+            _dataRepo = new ChecklistSectionRepository(fileSectionContext);
             _dataRepo.CreateIndexAsync().Wait();
 
             _fileService = fileService;
 
-            SUB_LOCAL_KEY = LOCAL_KEY + "." + Constants.ERROR_SUB_SECTION_LIST_SECTION_DATA;
+            SUB_LOCAL_KEY = LOCAL_KEY + "." + SUB_LOCAL_KEY;
         }
 
         /// <summary>
@@ -39,20 +39,20 @@ namespace SecondBrain.Services.Section
         /// <param name="sectionId"></param>
         /// <param name="claims"></param>
         /// <returns></returns>
-        public async Task<ListSectionResponseDTO> GetSectionByIdAsync(Guid sectionId, ClaimsPrincipal claims)
+        public async Task<ChecklistSectionResponseDTO> GetSectionByIdAsync(Guid sectionId, ClaimsPrincipal claims)
         {
             try
             {
                 Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
                 FileSectionNode metaData = await _metaDataRepo.GetByIdAsync(sectionId, userId);
-                ListSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
 
-                return new ListSectionResponseDTO(metaData, data);
+                return new ChecklistSectionResponseDTO(metaData, data);
             }
             catch (Exception ex)
             {
-                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
             }
         }
 
@@ -62,7 +62,7 @@ namespace SecondBrain.Services.Section
         /// <param name="fileId"></param>
         /// <param name="claims"></param>
         /// <returns></returns>
-        public async Task<List<ListSectionResponseDTO>> GetBySectionFileIdAsync(Guid fileId, ClaimsPrincipal claims)
+        public async Task<List<ChecklistSectionResponseDTO>> GetBySectionFileIdAsync(Guid fileId, ClaimsPrincipal claims)
         {
             try
             {
@@ -70,19 +70,19 @@ namespace SecondBrain.Services.Section
 
                 List<FileSectionNode> metaDatas = await _metaDataRepo.GetByFileIdAsync(fileId, userId);
 
-                List<ListSectionResponseDTO> responses = new List<ListSectionResponseDTO>();
+                List<ChecklistSectionResponseDTO> responses = new List<ChecklistSectionResponseDTO>();
 
                 foreach (var metaData in metaDatas)
                 {
-                    ListSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
-                    responses.Add(new ListSectionResponseDTO(metaData, data));
+                    ChecklistSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                    responses.Add(new ChecklistSectionResponseDTO(metaData, data));
                 }
 
                 return responses;
             }
             catch (Exception ex)
             {
-                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
             }
         }
 
@@ -99,16 +99,16 @@ namespace SecondBrain.Services.Section
                 Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
                 FileSectionNode metaData = await _metaDataRepo.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
-                ListSectionModel data = new ListSectionModel() { structureId = metaData.id };
+                ChecklistSectionModel data = new ChecklistSectionModel() { structureId = metaData.id };
                 await _dataRepo.CreateAsync(data);
 
                 await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
 
-                return new ListSectionResponseDTO(metaData, data);
+                return new ChecklistSectionResponseDTO(metaData, data);
             }
             catch (Exception ex)
             {
-                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
             }
         }
 
@@ -118,7 +118,7 @@ namespace SecondBrain.Services.Section
         /// <param name="data"></param>
         /// <param name="claims"></param>
         /// <returns></returns>
-        public async Task UpdateDataAsync(ListSectionUpdateRequestDTO data, ClaimsPrincipal claims)
+        public async Task UpdateDataAsync(ChecklistSectionUpdateRequestDTO data, ClaimsPrincipal claims)
         {
             try
             {
@@ -127,11 +127,23 @@ namespace SecondBrain.Services.Section
 
                 await UpdateTagsAsync(data.Id, data.Tags, userId);
 
-                await _dataRepo.UpdateAsync(data.Id, data.Items);
+                List<ChecklistItemModel> changes = data.Items.Select(i => i.ToModel()).ToList();
+                List<ChecklistItemModel> current = (await _dataRepo.GetByStructureIdAsync(data.Id)).items;
+
+                foreach (var changeItem in changes)
+                {
+                    ChecklistItemModel? found = current.Find(currentItem => currentItem.id == changeItem.id && currentItem.isChecked);
+                    if (changeItem.isChecked && found != null)
+                    {
+                            changeItem.checkedDate = found.checkedDate;
+                    }
+                }
+
+                await _dataRepo.UpdateAsync(data.Id, changes);
             }
             catch (Exception ex)
             {
-                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
             }
         }
     }

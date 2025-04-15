@@ -1,20 +1,13 @@
 ﻿using MongoDB.Driver;
 using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
-using static System.Collections.Specialized.BitVector32;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class TagRepository
+    public class TagRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public TagRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public TagRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get tags of file section
@@ -25,114 +18,66 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<List<string>> GetTagsOfFileSectionAsync(Guid FileSectionId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(tag:Tag)-[:MentionedIn]->(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileSectionNode section) => section.id == FileSectionId)
                     .ReturnDistinct(tag => tag.As<TagNode>().name);
 
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tags of file section could not be loaded");
-            };
+            return (await query.ResultsAsync).ToList();
         }
 
         public async Task UpdateFileSectionTagsAsync(List<string> tags, Guid FileSectionId, Guid userId)
         {
-            try
+            foreach (var tag in tags)
             {
-                foreach (var tag in tags)
-                {
-                    var query = _graph.Cypher
-                        .Merge($"(tag:Tag {{name: '{tag}'}})")
-                        .With("tag")
-                        .Match("(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
-                        .Where((UserNode user) => user.id == userId)
-                        .AndWhere((FileSectionNode section) => section.id == FileSectionId)
-                        .Merge("(tag)-[:MentionedIn]->(section)");
-                    await query.ExecuteWithoutResultsAsync();
-                }
+                var query = _graph.Cypher
+                    .Merge($"(tag:Tag {{name: '{tag}'}})")
+                    .With("tag")
+                    .Match("(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
+                    .Where((UserNode user) => user.id == userId)
+                    .AndWhere((FileSectionNode section) => section.id == FileSectionId)
+                    .Merge("(tag)-[:MentionedIn]->(section)");
+                await query.ExecuteWithoutResultsAsync();
             }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tags could not be updated");
-            };
         }
 
         public async Task RemoveFileSectionTagsAsync(List<string> tags, Guid FileSectionId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(tag:Tag)-[rel:MentionedIn]->(section:FileSection)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileSectionNode section) => section.id == FileSectionId)
                     .AndWhere($"tag.name IN [{string.Join(',', tags.Select(t => $"'{t}'"))}]")
                     .Delete("rel");
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tags could not be updated");
-            };
+            await query.ExecuteWithoutResultsAsync();
         }
 
         public async Task<List<string>> GetTagsAsync(List<string> tags)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(tag:Tag)")
-                    .Where($"tag.name IN [{string.Join(',', tags.Select(t => $"'{t}'"))}]")
-                    .ReturnDistinct(tag => tag.As<TagNode>().name);
+            var query = _graph.Cypher
+                     .Match("(tag:Tag)")
+                     .Where($"tag.name IN [{string.Join(',', tags.Select(t => $"'{t}'"))}]")
+                     .ReturnDistinct(tag => tag.As<TagNode>().name);
 
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tags could not be loaded");
-            };
+            return (await query.ResultsAsync).ToList();
         }
 
         public async Task CreateTagsAsync(string tag)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Merge("(tag:Tag{name:tag})");
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tag could not be created");
-            };
+            var query = _graph.Cypher
+                .Merge("(tag:Tag{name:tag})");
+            await query.ExecuteWithoutResultsAsync();
         }
 
         public async Task DeleteOrphanTagsAsync(List<string> tags)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(tag:Tag)")
                     .Where($"tag.name IN [{string.Join(',', tags.Select(t => $"'{t}'"))}]")
                     .AndWhere("NOT(tag)-[]-()")
                     .Delete("tag");
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.Write("Error: ", e.Message);
-                throw new Neo4jException("Error: Tags could not be deleted");
-            };
+            await query.ExecuteWithoutResultsAsync();
         }
     }
 }

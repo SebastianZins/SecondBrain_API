@@ -1,33 +1,34 @@
 ﻿using MongoDB.Driver;
 using SecondBrain.Database.MongoDB;
+using SecondBrain.Models.DatabaseModels.MongoDB.File;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 
 namespace SecondBrain.Repositories.MongoDB
 {
-    public class TextSectionRepository
+    public class ChecklistSectionRepository : MongoDBRepository<ChecklistSectionModel>
     {
-        private readonly IMongoCollection<TextSectionModel> _collection;
+        public ChecklistSectionRepository(FileSectionContext context) : base(context.Checklist) { }
 
-        public TextSectionRepository(FileSectionContext context)
+        public async Task<List<ChecklistSectionModel>> GetAllAsync()
         {
-            _collection = context.Text;
+            return await _collection.Find(_ => true).ToListAsync();
         }
 
-        public async Task<TextSectionModel> GetByStructureIdAsync(Guid id)
+        public async Task<ChecklistSectionModel> GetByStructureIdAsync(Guid id)
         {
             return await _collection
                             .Find(section => section.structureId == id)
                             .FirstOrDefaultAsync();
         }
 
-        public async Task<List<TextSectionModel>> GetByStructureIdsAsync(List<Guid> ids)
+        public async Task<List<ChecklistSectionModel>> GetByStructureIdsAsync(List<Guid> ids)
         {
             return await _collection
                             .Find(section => ids.Contains(section.structureId))
                             .ToListAsync();
         }
 
-        public async Task CreateAsync(TextSectionModel item)
+        public async Task CreateAsync(ChecklistSectionModel item)
         {
             await _collection.InsertOneAsync(item);
         }
@@ -35,7 +36,7 @@ namespace SecondBrain.Repositories.MongoDB
         public async Task<bool> DeleteAsync(Guid id)
         {
             DeleteResult actionResult = await _collection.DeleteOneAsync(
-                 Builders<TextSectionModel>.Filter.Eq("structureId", id));
+                 Builders<ChecklistSectionModel>.Filter.Eq("structureId", id));
 
             return actionResult.IsAcknowledged
                 && actionResult.DeletedCount > 0;
@@ -44,29 +45,20 @@ namespace SecondBrain.Repositories.MongoDB
         public async Task<bool> DeleteByIdListAsync(List<Guid> ids)
         {
             DeleteResult actionResult = await _collection.DeleteOneAsync(
-                 Builders<TextSectionModel>.Filter.In("structureId", ids));
+                 Builders<ChecklistSectionModel>.Filter.In("structureId", ids));
 
             return actionResult.IsAcknowledged
                 && actionResult.DeletedCount > 0;
         }
 
-        public async Task<bool> UpdateAsync(Guid id, string text)
+        public async Task<bool> UpdateAsync(Guid id, List<ChecklistItemModel> items)
         {
-            var filter = Builders<TextSectionModel>.Filter.Eq(s => s.structureId, id);
-            var update = Builders<TextSectionModel>.Update.Set(s => s.text, text);
+            var filter = Builders<ChecklistSectionModel>.Filter.Eq(s => s.structureId, id);
+            var update = Builders<ChecklistSectionModel>.Update.Set(s => s.items, items);
 
             UpdateResult actionResult = await _collection.UpdateOneAsync(filter, update);
             return actionResult.IsAcknowledged
                 && actionResult.ModifiedCount > 0;
-        }
-
-        public async Task<string> CreateIndexAsync()
-        {
-            IndexKeysDefinition<TextSectionModel> keys = Builders<TextSectionModel>
-                                                            .IndexKeys
-                                                            .Ascending(item => item.structureId);
-
-            return await _collection.Indexes.CreateOneAsync(new CreateIndexModel<TextSectionModel>(keys));
         }
     }
 }

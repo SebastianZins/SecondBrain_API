@@ -1,4 +1,5 @@
-﻿using SecondBrain.Core.Enums;
+﻿using SecondBrain.Core;
+using SecondBrain.Core.Enums;
 using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.File;
@@ -19,19 +20,21 @@ using System.Security.Claims;
 
 namespace SecondBrain.Services.Section
 {
-    public class FileSectionMetaDataService
+    public class FileSectionMetaDataService : Service
     {
         private readonly FileService _fileService;
         private readonly FileSectionRepository _fileSectionRepository;
         private readonly ListSectionRepository _listSectionRepository;
+        private readonly ChecklistSectionRepository _checklistSectionRepository;
         private readonly TextSectionRepository _textSectionRepository;
 
 
-        public FileSectionMetaDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext)
+        public FileSectionMetaDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base(Constants.ERROR_SECTION_FILE_SECTION_META_DATA)
         {
             _fileService = fileService;
             _fileSectionRepository = new FileSectionRepository(graph);
             _listSectionRepository = new ListSectionRepository(fileSectionContext);
+            _checklistSectionRepository = new ChecklistSectionRepository(fileSectionContext);
             _textSectionRepository = new TextSectionRepository(fileSectionContext);
         }
 
@@ -43,11 +46,18 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<FileSectionResponseDTO> GetFileSectionMetaDataById(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileSectionNode file = await _fileSectionRepository.GetByIdAsync(fileId, userId);
+                FileSectionNode file = await _fileSectionRepository.GetByIdAsync(fileId, userId);
 
-            return new FileSectionResponseDTO(file);
+                return new FileSectionResponseDTO(file);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -58,11 +68,18 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<List<FileSectionResponseDTO>> GetFileSectionMetaDataByFileId(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            List<FileSectionNode> files = await _fileSectionRepository.GetByFileIdAsync(fileId, userId);
+                List<FileSectionNode> files = await _fileSectionRepository.GetByFileIdAsync(fileId, userId);
 
-            return files.Select(file => new FileSectionResponseDTO(file)).ToList();
+                return files.Select(file => new FileSectionResponseDTO(file)).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -73,10 +90,17 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task UpdateFileSectionMetaDataAsync(FileSectionMetaDataUpdateRequestDTO data, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileSectionNode file = await _fileSectionRepository.GetByIdAsync(data.Id, userId);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileSectionNode file = await _fileSectionRepository.GetByIdAsync(data.Id, userId);
 
-            await _fileSectionRepository.UpdateAsync(data.WriteToModel(file), userId);
+                await _fileSectionRepository.UpdateAsync(data.WriteToModel(file), userId);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -87,34 +111,43 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task DeleteFileSectionMetaDataAsync(Guid id, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileSectionNode section = await _fileSectionRepository.GetByIdAsync(id, userId);
-
-            // delete data
-            switch (section.sectionType)
+            try
             {
-                case ESectionType.TEXT:
-                    break;
-                case ESectionType.MARKDOWN:
-                    break;
-                case ESectionType.LIST:
-                    await _listSectionRepository.DeleteAsync(id);
-                    break;
-                case ESectionType.CHECK_LIST:
-                    break;
-                case ESectionType.TABLE:
-                    break;
-                case ESectionType.OVERVIEW:
-                    break;
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileSectionNode section = await _fileSectionRepository.GetByIdAsync(id, userId);
+
+                // delete data
+                switch (section.sectionType)
+                {
+                    case ESectionType.TEXT:
+                        await _textSectionRepository.DeleteAsync(id);
+                        break;
+                    case ESectionType.MARKDOWN:
+                        break;
+                    case ESectionType.LIST:
+                        await _listSectionRepository.DeleteAsync(id);
+                        break;
+                    case ESectionType.CHECK_LIST:
+                        await _checklistSectionRepository.DeleteAsync(id);
+                        break;
+                    case ESectionType.TABLE:
+                        break;
+                    case ESectionType.OVERVIEW:
+                        break;
+                }
+
+                // update file section order list
+                FileNode file = await _fileService.GetBySectionIdAsync(id, userId);
+                file.sectionsOrder.Remove(id);
+                await _fileService.UpdateAsync(file, userId);
+
+                // delete meta data
+                await _fileSectionRepository.DeleteAsync(id, userId);
             }
-
-            // update file section order list
-            FileNode file = await _fileService.GetBySectionIdAsync(id, userId);
-            file.sectionsOrder.Remove(id);
-            await _fileService.UpdateAsync(file, userId);
-
-            // delete meta data
-            await _fileSectionRepository.DeleteAsync(id, userId);
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_DELETE_FAILED);
+            }
         }
 
         /// <summary>
@@ -125,44 +158,52 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<FileSectionResponseDTO?> CreateSectionAsync(FileSectionCreateRequestDTO newMetaData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-
-            FileSectionNode metaData = await _fileSectionRepository.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
-            FileSectionResponseDTO? response = null;
-
-            switch (newMetaData.SectionType)
+            try
             {
-                case ESectionType.TEXT:
-                    TextSectionModel textData = new TextSectionModel() { structureId = metaData.id };
-                    await _textSectionRepository.CreateAsync(textData);
-                    response = new TextSectionResponseDTO(metaData, textData);
-                    break;
-                case ESectionType.MARKDOWN:
-                    MarkdownSectionModel markdownData = new MarkdownSectionModel() { structureId = metaData.id };
-                    response = new MarkdownSectionResponseDTO(metaData, markdownData);
-                    break;
-                case ESectionType.LIST:
-                    ListSectionModel listData = new ListSectionModel() { structureId = metaData.id };
-                    await _listSectionRepository.CreateAsync(listData);
-                    response = new ListSectionResponseDTO(metaData, listData);
-                    break;
-                case ESectionType.CHECK_LIST:
-                    ChecklistSectionModel checklistData = new ChecklistSectionModel() { structureId = metaData.id };
-                    response = new ChecklistSectionResponseDTO(metaData, checklistData);
-                    break;
-                case ESectionType.TABLE:
-                    TableSectionModel tableData = new TableSectionModel() { structureId = metaData.id };
-                    response = new TableSectionResponseDTO(metaData, tableData);
-                    break;
-                case ESectionType.OVERVIEW:
-                    OverviewSectionModel overviewData = new OverviewSectionModel() { structureId = metaData.id };
-                    response = new OverviewSectionResponseDTO(metaData, overviewData);
-                    break;
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+
+                FileSectionNode metaData = await _fileSectionRepository.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
+                FileSectionResponseDTO? response = null;
+
+                switch (newMetaData.SectionType)
+                {
+                    case ESectionType.TEXT:
+                        TextSectionModel textData = new TextSectionModel() { structureId = metaData.id };
+                        await _textSectionRepository.CreateAsync(textData);
+                        response = new TextSectionResponseDTO(metaData, textData);
+                        break;
+                    case ESectionType.MARKDOWN:
+                        MarkdownSectionModel markdownData = new MarkdownSectionModel() { structureId = metaData.id };
+                        response = new MarkdownSectionResponseDTO(metaData, markdownData);
+                        break;
+                    case ESectionType.LIST:
+                        ListSectionModel listData = new ListSectionModel() { structureId = metaData.id };
+                        await _listSectionRepository.CreateAsync(listData);
+                        response = new ListSectionResponseDTO(metaData, listData);
+                        break;
+                    case ESectionType.CHECK_LIST:
+                        ChecklistSectionModel checklistData = new ChecklistSectionModel() { structureId = metaData.id };
+                        await _checklistSectionRepository.CreateAsync(checklistData);
+                        response = new ChecklistSectionResponseDTO(metaData, checklistData);
+                        break;
+                    case ESectionType.TABLE:
+                        TableSectionModel tableData = new TableSectionModel() { structureId = metaData.id };
+                        response = new TableSectionResponseDTO(metaData, tableData);
+                        break;
+                    case ESectionType.OVERVIEW:
+                        OverviewSectionModel overviewData = new OverviewSectionModel() { structureId = metaData.id };
+                        response = new OverviewSectionResponseDTO(metaData, overviewData);
+                        break;
+                }
+
+                await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
+
+                return response;
             }
-
-            await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
-
-            return response;
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+            }
         }
     }
 }

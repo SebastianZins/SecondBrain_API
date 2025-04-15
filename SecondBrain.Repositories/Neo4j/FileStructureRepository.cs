@@ -1,20 +1,13 @@
 ﻿using Neo4j.Driver;
-using Neo4jClient;
 using SecondBrain.Core.Enums;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.Neo4j;
-using System.Reflection.Emit;
 
 namespace SecondBrain.Repositories.Neo4j
 {
-    public class FileStructureRepository
+    public class FileStructureRepository : Neo4jRepository
     {
-        private readonly IGraphClient _graph;
-
-        public FileStructureRepository(Neo4jGraph graph)
-        {
-            _graph = graph.GetClient();
-        }
+        public FileStructureRepository(Neo4jGraph graph) : base(graph) { }
 
         /// <summary>
         /// Get file structure item or root if no id provided
@@ -25,55 +18,39 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<FileStructureNode?> GetFileStructureItemAsync(Guid userId, Guid? id = null)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(user:User)")
                     .Where((UserNode user) => user.id == userId);
 
-                if (id == null)
-                {
-                    query = query.Match("(item:RootFolder)-[:CreatedBy|UpdatedBy]->(user)");
-                }
-                else
-                {
-                    query = query
-                        .Match("(item:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
-                        .Where((FileStructureNode item) => item.id == id);
-                }
-
-                var resultQuery = query
-                    .ReturnDistinct(item => item.As<FileStructureNode>());
-
-                var result = await resultQuery.ResultsAsync;
-                return result.Count() >= 1 ? result.Single() : null;
-            }
-            catch (Exception e)
+            if (id == null)
             {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "File structure item not found.");
+                query = query.Match("(item:RootFolder)-[:CreatedBy|UpdatedBy]->(user)");
             }
+            else
+            {
+                query = query
+                    .Match("(item:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
+                    .Where((FileStructureNode item) => item.id == id);
+            }
+
+            var resultQuery = query
+                .ReturnDistinct(item => item.As<FileStructureNode>());
+
+            var result = await resultQuery.ResultsAsync;
+            return result.Count() >= 1 ? result.Single() : null;
         }
 
         public async Task<int> GetChildCountAsync(Guid itemId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(item:FileStructure)-[]->(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode item) => item.id == itemId)
-                    .Match("(item)-[:ParentFolderOf]->(sibling:FileStructure)")
-                    .Where((FileStructureNode sibling) => sibling.id != itemId)
-                    .ReturnDistinct(sibling => sibling.As<FileStructureNode>().id);
+            var query = _graph.Cypher
+                   .Match("(item:FileStructure)-[]->(user:User)")
+                   .Where((UserNode user) => user.id == userId)
+                   .AndWhere((FileStructureNode item) => item.id == itemId)
+                   .Match("(item)-[:ParentFolderOf]->(sibling:FileStructure)")
+                   .Where((FileStructureNode sibling) => sibling.id != itemId)
+                   .ReturnDistinct(sibling => sibling.As<FileStructureNode>().id);
 
-                return (await query.ResultsAsync).Count();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Number of child items could not be determined.");
-            }
+            return (await query.ResultsAsync).Count();
         }
 
         /// <summary>
@@ -88,9 +65,7 @@ namespace SecondBrain.Repositories.Neo4j
         public async Task<FileStructureNode> CreateFileStructureRootAsync(string label, EFileType type, int treeId, Guid userId)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .Merge($"(item:RootFolder:FileStructure{{id:'{Guid.NewGuid()}'}})")
@@ -103,13 +78,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .WithParam("now", now)
                     .ReturnDistinct(item => item.As<FileStructureNode>());
 
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Creating file structure item failed.");
-            }
+            return (await query.ResultsAsync).Single();
         }
 
         /// <summary>
@@ -125,9 +94,7 @@ namespace SecondBrain.Repositories.Neo4j
         public async Task<FileStructureNode> CreateFileStructureItemAsync(string label, EFileType type, int treeId, Guid parentId, Guid userId)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .Match("(parent:FileStructure)-[]->(user)")
@@ -143,13 +110,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .WithParam("now", now)
                     .ReturnDistinct(item => item.As<FileStructureNode>());
 
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Creating file structure item failed.");
-            }
+            return (await query.ResultsAsync).Single();
         }
 
         /// <summary>
@@ -161,22 +122,14 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<List<FileStructureNode>> GetChildFileStructureItemsAsync(Guid parentFolderId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(parent:FileStructure)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode parent) => parent.id == parentFolderId)
-                    .Match("(parent)-[:ParentFolderOf]->(child:FileStructure)")
-                    .ReturnDistinct(child => child.As<FileStructureNode>());
+            var query = _graph.Cypher
+                     .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(parent:FileStructure)")
+                     .Where((UserNode user) => user.id == userId)
+                     .AndWhere((FileStructureNode parent) => parent.id == parentFolderId)
+                     .Match("(parent)-[:ParentFolderOf]->(child:FileStructure)")
+                     .ReturnDistinct(child => child.As<FileStructureNode>());
 
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Loading file structure items failed.");
-            }
+            return (await query.ResultsAsync).ToList();
         }
 
         /// <summary>
@@ -189,21 +142,13 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task UpdateItemTreeIdAsync(Guid id, int treeId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode item) => item.id == id)
-                    .Set($"item.treeId = {treeId}");
+            var query = _graph.Cypher
+                   .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
+                   .Where((UserNode user) => user.id == userId)
+                   .AndWhere((FileStructureNode item) => item.id == id)
+                   .Set($"item.treeId = {treeId}");
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Updating tree id of file structure item failed.");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
 
 
@@ -215,20 +160,12 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<List<FileStructureNode>> GetFileStructuresAsync(Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
                     .Where((UserNode user) => user.id == userId)
                     .ReturnDistinct(item => item.As<FileStructureNode>());
 
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Loading file structure items failed.");
-            }
+            return (await query.ResultsAsync).ToList();
         }
 
         /// <summary>
@@ -239,24 +176,16 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<List<Tuple<Guid, Guid>>> GetFileStructureConnectionsAsync(Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .Match("(user)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)-[:ParentFolderOf]->(child:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
-                    .ReturnDistinct((folder, child) => new Tuple<Guid, Guid>(
-                            folder.As<FileStructureNode>().id,
-                            child.As<FileStructureNode>().id
-                        ));
+            var query = _graph.Cypher
+                     .Match("(user:User)")
+                     .Where((UserNode user) => user.id == userId)
+                     .Match("(user)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)-[:ParentFolderOf]->(child:FileStructure)-[:CreatedBy|UpdatedBy]->(user)")
+                     .ReturnDistinct((folder, child) => new Tuple<Guid, Guid>(
+                             folder.As<FileStructureNode>().id,
+                             child.As<FileStructureNode>().id
+                         ));
 
-                return (await query.ResultsAsync).ToList();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Loading file structure connections failed.");
-            }
+            return (await query.ResultsAsync).ToList();
         }
 
         /// <summary>
@@ -271,9 +200,7 @@ namespace SecondBrain.Repositories.Neo4j
         public async Task UpdateFileStructureItemDataAsync(Guid id, string label, EFileType type, Guid userId)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(item:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileStructureNode item) => item.id == id)
@@ -282,15 +209,9 @@ namespace SecondBrain.Repositories.Neo4j
                     .Merge("(item)-[:UpdatedBy {updated:$now}]->(user)")
                     .WithParams(new { now });
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Updating filte structure item data failed.");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
-        
+
         /// <summary>
         /// Delete a folder and all child folder and attached files of it and its children
         /// </summary>
@@ -300,28 +221,20 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task DeleteFileStructureItemAsync(Guid folderId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode folder) => folder.id == folderId)
-                    .OptionalMatch("(folder:FileStructure)-[]->(file:File|Image|DataFile)")
-                    .OptionalMatch("(folder)-[:ParentFolderOf*]->(childFolder:FileStructure)")
-                    .OptionalMatch("(childFolder:FileStructure)-[]->(file:File)-[:Contains]->(section:FileSection)-[]-(attachement:Attachement)")
-                    .DetachDelete("attachement")
-                    .DetachDelete("section")
-                    .DetachDelete("file")
-                    .DetachDelete("childFolder")
-                    .DetachDelete("folder");
+            var query = _graph.Cypher
+                     .Match("(folder:FileStructure)-[:CreatedBy|UpdatedBy]->(user:User)")
+                     .Where((UserNode user) => user.id == userId)
+                     .AndWhere((FileStructureNode folder) => folder.id == folderId)
+                     .OptionalMatch("(folder:FileStructure)-[]->(file:File|Image|DataFile)")
+                     .OptionalMatch("(folder)-[:ParentFolderOf*]->(childFolder:FileStructure)")
+                     .OptionalMatch("(childFolder:FileStructure)-[]->(file:File)-[:Contains]->(section:FileSection)-[]-(attachement:Attachement)")
+                     .DetachDelete("attachement")
+                     .DetachDelete("section")
+                     .DetachDelete("file")
+                     .DetachDelete("childFolder")
+                     .DetachDelete("folder");
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Deleting folder failed.");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
 
         /// <summary>
@@ -333,28 +246,18 @@ namespace SecondBrain.Repositories.Neo4j
         /// <exception cref="Neo4jException"></exception>
         public async Task<FileStructureNode> GetParentFolderAsync(Guid itemId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
-                    .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)<-[:ParentFolderOf]-(parent:FileStructure)")
-                    .Where((UserNode user) => user.id == userId)
-                    .AndWhere((FileStructureNode folder) => folder.id == itemId)
-                    .ReturnDistinct(parent => parent.As<FileStructureNode>());
+            var query = _graph.Cypher
+                     .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(folder:FileStructure)<-[:ParentFolderOf]-(parent:FileStructure)")
+                     .Where((UserNode user) => user.id == userId)
+                     .AndWhere((FileStructureNode folder) => folder.id == itemId)
+                     .ReturnDistinct(parent => parent.As<FileStructureNode>());
 
-                return (await query.ResultsAsync).Single();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Loading parent folder.");
-            }
+            return (await query.ResultsAsync).Single();
         }
 
         public async Task MoveFielStructureItemAsync(Guid id, Guid parentId, Guid userId)
         {
-            try
-            {
-                var query = _graph.Cypher
+            var query = _graph.Cypher
                     .Match("(user:User)<-[:CreatedBy|UpdatedBy]-(item:FileStructure)")
                     .Where((UserNode user) => user.id == userId)
                     .AndWhere((FileStructureNode item) => item.id == id)
@@ -365,13 +268,7 @@ namespace SecondBrain.Repositories.Neo4j
                     .Where((FileStructureNode newParent) => newParent.id == parentId)
                     .Merge("(newParent)-[:ParentFolderOf]->(item)");
 
-                await query.ExecuteWithoutResultsAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error:", e.Message);
-                throw new Neo4jException("Error:", "Moving file structure item failed.");
-            }
+            await query.ExecuteWithoutResultsAsync();
         }
     }
 }

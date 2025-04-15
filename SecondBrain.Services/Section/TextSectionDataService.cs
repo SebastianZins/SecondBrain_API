@@ -1,4 +1,5 @@
-﻿using SecondBrain.Database.MongoDB;
+﻿using SecondBrain.Core;
+using SecondBrain.Database.MongoDB;
 using SecondBrain.Database.Neo4j;
 using SecondBrain.Models.DatabaseModels.MongoDB.Section;
 using SecondBrain.Models.DatabaseModels.Neo4j;
@@ -18,14 +19,18 @@ namespace SecondBrain.Services.Section
         private readonly FileSectionRepository _metaDataRepo;
         private readonly FileService _fileService;
 
+        private readonly string SUB_LOCAL_KEY;
 
-        public TextSectionDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base (graph)
+
+        public TextSectionDataService(FileService fileService, Neo4jGraph graph, FileSectionContext fileSectionContext) : base(graph)
         {
             _metaDataRepo = new FileSectionRepository(graph);
             _dataRepo = new TextSectionRepository(fileSectionContext);
             _dataRepo.CreateIndexAsync().Wait();
 
             _fileService = fileService;
+
+            SUB_LOCAL_KEY = LOCAL_KEY + "." + Constants.ERROR_SUB_SECTION_TEXT_SECTION_DATA;
         }
 
         /// <summary>
@@ -36,12 +41,19 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<TextSectionResponseDTO> GetSectionByIdAsync(Guid sectionId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileSectionNode metaData = await _metaDataRepo.GetByIdAsync(sectionId, userId);
-            TextSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                FileSectionNode metaData = await _metaDataRepo.GetByIdAsync(sectionId, userId);
+                TextSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
 
-            return new TextSectionResponseDTO(metaData, data);
+                return new TextSectionResponseDTO(metaData, data);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -52,19 +64,26 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<List<TextSectionResponseDTO>> GetBySectionFileIdAsync(Guid fileId, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-
-            List<FileSectionNode> metaDatas = await _metaDataRepo.GetByFileIdAsync(fileId, userId);
-
-            List<TextSectionResponseDTO> responses = new List<TextSectionResponseDTO>();
-
-            foreach (var metaData in metaDatas)
+            try
             {
-                TextSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
-                responses.Add(new TextSectionResponseDTO(metaData, data));
-            }
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            return responses;
+                List<FileSectionNode> metaDatas = await _metaDataRepo.GetByFileIdAsync(fileId, userId);
+
+                List<TextSectionResponseDTO> responses = new List<TextSectionResponseDTO>();
+
+                foreach (var metaData in metaDatas)
+                {
+                    TextSectionModel data = await _dataRepo.GetByStructureIdAsync(metaData.id);
+                    responses.Add(new TextSectionResponseDTO(metaData, data));
+                }
+
+                return responses;
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_LOADING_FAILED);
+            }
         }
 
         /// <summary>
@@ -75,15 +94,22 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task<FileSectionResponseDTO> CreateSectionAsync(FileSectionCreateRequestDTO newMetaData, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
 
-            FileSectionNode metaData = await _metaDataRepo.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
-            TextSectionModel data = new TextSectionModel() { structureId = metaData.id };
-            await _dataRepo.CreateAsync(data);
+                FileSectionNode metaData = await _metaDataRepo.CreateAsync(newMetaData.ToModel(), newMetaData.StructureId, userId);
+                TextSectionModel data = new TextSectionModel() { structureId = metaData.id };
+                await _dataRepo.CreateAsync(data);
 
-            await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
+                await _fileService.AddSectionOrderItemAsync(metaData.id, userId, newMetaData.SectionOrderId);
 
-            return new TextSectionResponseDTO(metaData, data);
+                return new TextSectionResponseDTO(metaData, data);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_CREATE_FAILED);
+            }
         }
 
         /// <summary>
@@ -94,12 +120,19 @@ namespace SecondBrain.Services.Section
         /// <returns></returns>
         public async Task UpdateDataAsync(TextSectionUpdateRequestDTO data, ClaimsPrincipal claims)
         {
-            Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
-            FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
+            try
+            {
+                Guid userId = ClaimsPrincipalHelper.GetCurrentUserId(claims);
+                FileSectionNode file = await _metaDataRepo.GetByIdAsync(data.Id, userId);
 
-            await UpdateTagsAsync(data.Id, data.Tags, userId);
+                await UpdateTagsAsync(data.Id, data.Tags, userId);
 
-            await _dataRepo.UpdateAsync(data.Id, data.Text);
+                await _dataRepo.UpdateAsync(data.Id, data.Text);
+            }
+            catch (Exception ex)
+            {
+                throw LogHelper.LogError(ex, SUB_LOCAL_KEY, Constants.ERROR_TYPE_UPDATE_FAILED);
+            }
         }
     }
 }
